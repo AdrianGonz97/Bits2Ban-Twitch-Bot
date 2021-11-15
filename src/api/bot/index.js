@@ -29,6 +29,7 @@ export async function start(req, res) {
             password: access_token,
         },
         channels: ["frostprime_"],
+        logger: logger,
     });
 
     try {
@@ -37,7 +38,7 @@ export async function start(req, res) {
         client.on("cheer", (channel, userstate, message) => {
             const bitAmount = userstate.bits;
             logger.info(
-                `[CHEER] [#${channel}] <${userstate.username}>: ${message}`
+                `[CHEER] [${channel}] <${userstate.username}>: ${message}`
             );
             if (bitAmount >= bitTarget) {
                 console.log(bitAmount);
@@ -53,9 +54,11 @@ export async function start(req, res) {
                 );
                 if (!!found) {
                     const username = found.slice(1); // removes the @
-                    timeoutUser(channel, username);
+                    timeoutUser(client, channel, username);
                 } else {
-                    logger.warn("No name was tagged");
+                    logger.warn(
+                        `[${channel}] No username was tagged in ${userstate.username}'s message`
+                    );
                 }
             }
         });
@@ -96,16 +99,15 @@ export async function stop(req, res) {
     }
 }
 
-async function timeoutUser(login, bannedUser) {
-    const client = clients.get(login);
+async function timeoutUser(client, channel, userToBan) {
     try {
         await client.timeout(
-            login,
-            bannedUser,
+            channel,
+            userToBan,
             timeoutTime,
-            "Not using channel points for number guessing"
+            "Timed out for bits"
         );
-        logger.info(`[TIMEOUT]: ${bannedUser}`);
+        logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
     } catch (err) {
         logger.error(err);
     }
