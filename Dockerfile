@@ -6,8 +6,8 @@ WORKDIR /app
 ENV PATH /app/node_modules/.bin:$PATH
 # install application dependencies
 COPY package.json ./
-COPY package-lock.json ./
-RUN npm install
+COPY yarn.lock ./
+RUN yarn
 # fixes ubuntu specific mounting error 
 RUN mkdir -p node_modules/.cache && chmod -R 777 node_modules/.cache
 # add app

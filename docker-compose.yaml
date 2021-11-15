@@ -1,6 +1,6 @@
 version: "3.0"
 services:
-    chat-bonk-app:
+    bit-for-ban-app:
         build: .
         volumes:
             - ${PWD}:/app
