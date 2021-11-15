@@ -26,5 +26,5 @@ async function sendCode(code) {
     });
     const botData = await botResp.json();
     console.log(botData);
-    // window.location = "dashboard";
+    window.location = "/dashboard";
 }

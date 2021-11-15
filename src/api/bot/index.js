@@ -8,6 +8,8 @@ const bitTarget = 1;
 export async function start(req, res) {
     const { access_token, login } = req.body;
 
+    console.log(access_token, login);
+
     // destroy old client it one already exists
     if (clients.has(login)) {
         logger.info(
@@ -54,7 +56,7 @@ export async function start(req, res) {
                 );
                 if (!!found) {
                     const username = found.slice(1); // removes the @
-                    timeoutUser(client, channel, username);
+                    timeoutUser(client, channel, username, userstate.mod);
                 } else {
                     logger.warn(
                         `[${channel}] No username was tagged in ${userstate.username}'s message`
@@ -99,7 +101,7 @@ export async function stop(req, res) {
     }
 }
 
-async function timeoutUser(client, channel, userToBan) {
+async function timeoutUser(client, channel, userToBan, isMod) {
     try {
         await client.timeout(
             channel,
@@ -107,8 +109,24 @@ async function timeoutUser(client, channel, userToBan) {
             timeoutTime,
             "Timed out for bits"
         );
+        if (isMod) remodAfterBan();
         logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
     } catch (err) {
         logger.error(err);
     }
+}
+
+function remodAfterBan(client, channel, username) {
+    setTimeout(
+        (client, channel, username) => {
+            client
+                .mod(channel, username)
+                .then(() => logger.warn(`[MODDED] [${channel}]: <${username}>`))
+                .catch((err) => logger.error(err));
+        },
+        timeoutTime * 1000 + 10000, // 10 sec buffer
+        client,
+        channel,
+        username
+    );
 }
