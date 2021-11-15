@@ -14,6 +14,7 @@ async function sendCode(code) {
     const resp = await fetch(`https://${window.location.hostname}/auth`, {
         method: "POST",
         body: JSON.stringify({ code }),
+        headers: { "Content-Type": "application/json" },
     });
     const data = await resp.json();
     console.log(data);

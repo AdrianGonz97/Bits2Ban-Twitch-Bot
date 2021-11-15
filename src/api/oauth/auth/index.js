@@ -16,12 +16,14 @@ export default async function post(req, res) {
     urlParams.set("client_secret", clientSecret);
     urlParams.set("code", code);
     urlParams.set("grant_type", "authorization_code");
-    urlParams.set("redirect_uri", `${basePath}`);
+    urlParams.set("redirect_uri", `${basePath}/login`);
 
     try {
         const resp = await oauth("token", headers, null, urlParams);
-        logger.info(resp.status);
-        if (!resp.ok) throw new Error("Failed to authorize with Twitch");
+        if (!resp.ok)
+            throw new Error(
+                `Failed to authorize with Twitch Status: ${resp.status}`
+            );
 
         const userToken = await resp.json();
 
