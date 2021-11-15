@@ -11,11 +11,20 @@ if (params.state === window.localStorage.getItem("state")) {
 }
 
 async function sendCode(code) {
-    const resp = await fetch(`https://${window.location.hostname}/auth`, {
+    const tokenResp = await fetch(`https://${window.location.hostname}/auth`, {
         method: "POST",
         body: JSON.stringify({ code }),
         headers: { "Content-Type": "application/json" },
     });
-    const data = await resp.json();
-    console.log(data);
+    const tokenData = await tokenResp.json();
+    console.log(tokenData);
+
+    const botResp = await fetch(`https://${window.location.hostname}/start`, {
+        method: "POST",
+        body: JSON.stringify(tokenData),
+        headers: { "Content-Type": "application/json" },
+    });
+    const botData = await botResp.json();
+    console.log(botData);
+    // window.location = "/";
 }

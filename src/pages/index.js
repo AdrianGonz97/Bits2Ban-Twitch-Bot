@@ -2,7 +2,13 @@ window.onload = function () {
     const clientId = "8nxu1pu09x07u2q5wufhx4qv7bmk30";
     const baseUrl = window.location.hostname;
     const state = generateState();
-    const scopes = ["bits:read", "user:read:email", "channel:moderate"];
+    const scopes = [
+        "bits:read",
+        "user:read:email",
+        "channel:moderate",
+        "chat:read",
+        "chat:edit",
+    ];
 
     window.localStorage.setItem("state", state);
 
