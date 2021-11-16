@@ -4,8 +4,8 @@ import refresh from "../oauth/refresh/index.js";
 import { updateUser } from "../../db/index.js";
 
 const clients = new Map();
-const timeoutTime = 609; //60 * 10; // 10 mins
-const bitTarget = 2000;
+const timeoutTime = process.env.TIMEOUT_TIME;
+const bitTarget = process.env.BIT_AMOUNT;
 
 export async function start(req, res) {
     const { access_token, login } = req.body;
@@ -138,6 +138,7 @@ function getClient(access_token, login) {
 
 export async function stopBot(login) {
     const client = clients.get(login);
+    if (!client) return;
     try {
         await client.disconnect();
         logger.warn(`Disconnected bot for ${login}`);

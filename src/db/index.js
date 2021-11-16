@@ -1,5 +1,5 @@
 import Datastore from "nedb";
-import { loadBots } from "../api/bot/index.js";
+import { loadBots, stopBot } from "../api/bot/index.js";
 import logger from "../logger/index.js";
 
 const users = new Datastore({
@@ -28,6 +28,7 @@ export function removeUser(login) {
             logger.error(err);
         } else {
             logger.info(`Deleted <${login}> Docs Removed: ${numRemoved}`);
+            stopBot(login);
         }
     });
 }
