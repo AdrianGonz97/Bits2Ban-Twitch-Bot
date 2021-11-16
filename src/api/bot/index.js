@@ -138,7 +138,8 @@ function getClient(access_token, login) {
     client.on("cheer", (channel, userstate, message) => {
         const bitAmount = userstate.bits;
         logger.info(`[CHEER] [${channel}] <${userstate.username}>: ${message}`);
-        if (bitAmount === bitTarget) {
+        // anyone on the whitelist can cheer at any amount to ban someone of their choice
+        if (bitAmount === bitTarget || whitelist.includes(userstate.username)) {
             const regex = /([^ "]*\CHEER[^ "]*)/g; // removes all cheers from string
             const parsedMsg = message
                 .toUpperCase()
