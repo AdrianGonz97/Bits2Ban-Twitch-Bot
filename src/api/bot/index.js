@@ -17,7 +17,6 @@ export async function start(req, res) {
         );
         const client = clients.get(login);
         client.disconnect().catch((err) => logger.error(err));
-        // clients.delete(login);
     }
 
     const client = new tmi.Client({
@@ -34,47 +33,45 @@ export async function start(req, res) {
         logger: logger,
     });
 
+    client.on("cheer", (channel, userstate, message) => {
+        const bitAmount = userstate.bits;
+        logger.info(`[CHEER] [${channel}] <${userstate.username}>: ${message}`);
+        if (bitAmount >= bitTarget) {
+            console.log(bitAmount);
+            const regex = /([^ "]*\CHEER[^ "]*)/g; // removes all cheers from string
+            const parsedMsg = message
+                .toUpperCase()
+                .replace(regex, "")
+                .toLowerCase();
+            const words = parsedMsg.split(" ");
+            const found = words.find(
+                // shortest possible username is 3 chars
+                (el) => el[0] === "@" && el.length > 4
+            );
+            if (!!found) {
+                const username = found.slice(1); // removes the @
+                timeoutUser(client, channel, username);
+            } else {
+                logger.warn(
+                    `[${channel}] No username was tagged in ${userstate.username}'s message`
+                );
+            }
+        }
+    });
+
+    client.on("connected", () => {
+        logger.info(`Connected to ${login}'s channel`);
+    });
+
+    client.on("disconnected", (reason) => {
+        logger.warn(`Disconnected from ${login}'s channel: ${reason}`);
+        clients.delete(login);
+    });
+
+    clients.set(login, client);
+
     try {
         await client.connect();
-
-        client.on("cheer", (channel, userstate, message) => {
-            const bitAmount = userstate.bits;
-            logger.info(
-                `[CHEER] [${channel}] <${userstate.username}>: ${message}`
-            );
-            if (bitAmount >= bitTarget) {
-                console.log(bitAmount);
-                const regex = /([^ "]*\CHEER[^ "]*)/g; // removes all cheers from string
-                const parsedMsg = message
-                    .toUpperCase()
-                    .replace(regex, "")
-                    .toLowerCase();
-                const words = parsedMsg.split(" ");
-                const found = words.find(
-                    // shortest possible name is 3 chars
-                    (el) => el[0] === "@" && el.length > 4
-                );
-                if (!!found) {
-                    const username = found.slice(1); // removes the @
-                    timeoutUser(client, channel, username, userstate.mod);
-                } else {
-                    logger.warn(
-                        `[${channel}] No username was tagged in ${userstate.username}'s message`
-                    );
-                }
-            }
-        });
-
-        client.on("connected", () => {
-            logger.info(`Connected to ${login}'s channel`);
-        });
-
-        client.on("disconnected", (reason) => {
-            logger.warn(`Disconnected from ${login}'s channel: ${reason}`);
-            clients.delete(login);
-        });
-
-        clients.set(login, client);
 
         res.status(200).json({
             message: `Connected bot to ${login}'s channel`,
@@ -101,15 +98,17 @@ export async function stop(req, res) {
     }
 }
 
-async function timeoutUser(client, channel, userToBan, isMod) {
+async function timeoutUser(client, channel, userToBan) {
     try {
+        // get list of mods for channel
+        const mods = await client.mods(channel);
         await client.timeout(
             channel,
             userToBan,
             timeoutTime,
             "Timed out for bits"
         );
-        if (isMod) remodAfterBan();
+        if (mods.includes(userToBan)) remodAfterBan(client, channel, userToBan);
         logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
     } catch (err) {
         logger.error(err);
