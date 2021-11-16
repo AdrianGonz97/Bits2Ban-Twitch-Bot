@@ -26,6 +26,7 @@ export default async function post(req, res) {
         }
 
         removeUser(login);
+        stopBot(login);
 
         res.status(status).json(resBody);
     } catch (err) {
