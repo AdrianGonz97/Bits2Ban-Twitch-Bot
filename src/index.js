@@ -16,5 +16,5 @@ app.post("/auth", auth);
 app.post("/revoke", revoke);
 app.post("/start", start);
 
-app.listen(3000);
-logger.info("Running on port 3000");
+app.listen(process.env.PORT);
+logger.info(`Running on port ${process.env.PORT}`);
