@@ -92,7 +92,7 @@ function getClient(access_token, login) {
             username: login,
             password: access_token,
         },
-        channels: ["frostprime_"],
+        channels: [login],
         logger: logger,
     });
 
