@@ -24,21 +24,6 @@ export async function start(req, res) {
     }
 }
 
-export async function stop(req, res) {
-    const { login } = req.body;
-    const client = clients.get(login);
-
-    try {
-        await client.disconnect();
-
-        res.status(200).json({ message: `Disconnected bot for ${login}` });
-    } catch (err) {
-        res.status(401).json({
-            message: "Bot disconnection unsuccessful",
-        });
-    }
-}
-
 async function timeoutUser(client, channel, userToBan) {
     try {
         // get list of mods for channel

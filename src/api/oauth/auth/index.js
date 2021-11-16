@@ -1,7 +1,7 @@
 import logger from "../../../logger/index.js";
 import getUserInfo from "../_user.js";
 import { oauth } from "../_oauth.js";
-import { addUser } from "../../../db/index.js";
+import { addUser, removeUser } from "../../../db/index.js";
 
 export default async function post(req, res) {
     logger.info("Getting access token");
@@ -9,7 +9,7 @@ export default async function post(req, res) {
     const clientSecret = process.env.CLIENT_SECRET;
     const basePath = process.env.URI;
 
-    const { code } = req.body;
+    const { code, isRevoking } = req.body;
 
     const urlParams = new Map();
     const headers = { Accept: "application/json" };
@@ -35,7 +35,11 @@ export default async function post(req, res) {
                 ...userData,
             };
 
-            addUser(token); // adds user to db
+            if (!isRevoking) {
+                // runs only during normal auth to avoid writing/removing
+                removeUser(token.login);
+                addUser(token);
+            }
 
             res.status(201).json(token);
         } else throw new Error("Authorization failed");

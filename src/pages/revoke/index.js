@@ -13,7 +13,7 @@ if (params.state === window.localStorage.getItem("state")) {
 async function sendCode(code) {
     const tokenResp = await fetch(`https://${window.location.hostname}/auth`, {
         method: "POST",
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, isRevoking: true }),
         headers: { "Content-Type": "application/json" },
     });
     const tokenData = await tokenResp.json();
