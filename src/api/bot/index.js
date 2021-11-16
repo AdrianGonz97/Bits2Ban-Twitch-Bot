@@ -4,8 +4,8 @@ import refresh from "../oauth/refresh/index.js";
 import { updateUser } from "../../db/index.js";
 
 const clients = new Map();
-const timeoutTime = 10; //60 * 10; // 10 mins
-const bitTarget = 1;
+const timeoutTime = 609; //60 * 10; // 10 mins
+const bitTarget = 2000;
 
 export async function start(req, res) {
     const { access_token, login } = req.body;
