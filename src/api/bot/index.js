@@ -99,8 +99,7 @@ function getClient(access_token, login) {
     client.on("cheer", (channel, userstate, message) => {
         const bitAmount = userstate.bits;
         logger.info(`[CHEER] [${channel}] <${userstate.username}>: ${message}`);
-        if (bitAmount >= bitTarget) {
-            console.log(bitAmount);
+        if (bitAmount == bitTarget) {
             const regex = /([^ "]*\CHEER[^ "]*)/g; // removes all cheers from string
             const parsedMsg = message
                 .toUpperCase()
