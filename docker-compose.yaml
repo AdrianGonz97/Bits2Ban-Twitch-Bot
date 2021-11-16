@@ -3,8 +3,10 @@ services:
     bits-for-ban-app:
         build: .
         volumes:
-            - ${PWD}:/app
-            - /app/node_modules
+            - ./:/app
+            # - /app/node_modules
+            # I need to figure out why removing the top line fixes the nedb and mongodb crashes of missing packages
+            - ./data:/app/data
         env_file:
             - ./.env
         ports:

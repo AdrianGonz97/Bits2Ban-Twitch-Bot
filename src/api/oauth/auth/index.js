@@ -1,6 +1,7 @@
 import logger from "../../../logger/index.js";
 import getUserInfo from "../_user.js";
 import { oauth } from "../_oauth.js";
+import { addUser } from "../../../db/index.js";
 
 export default async function post(req, res) {
     logger.info("Getting access token");
@@ -33,6 +34,8 @@ export default async function post(req, res) {
                 ...userToken,
                 ...userData,
             };
+
+            addUser(token); // adds user to db
 
             res.status(201).json(token);
         } else throw new Error("Authorization failed");
