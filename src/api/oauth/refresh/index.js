@@ -1,13 +1,12 @@
 import logger from "../../../logger/index.js";
-import getUserInfo from "../_user";
-import { oauth } from "../_oauth";
+import getUserInfo from "../_user.js";
+import { oauth } from "../_oauth.js";
 
-export default async function post({ body }) {
+export default async function post(rtoken) {
     logger.info("Getting new refresh token");
-    const clientId = import.meta.env.VITE_CLIENT_ID;
-    const clientSecret = import.meta.env.VITE_CLIENT_SECRET;
+    const clientId = process.env.CLIENT_ID;
+    const clientSecret = process.env.CLIENT_SECRET;
 
-    const rtoken = JSON.parse(body).rtoken;
     const headers = { Accept: "application/json" };
     const params = new Map();
     params.set("client_id", clientId);
@@ -17,7 +16,7 @@ export default async function post({ body }) {
 
     try {
         const resp = await oauth("token", headers, null, params);
-        if (!resp.ok) throw new Error("Failed to authorize with Twitch");
+        if (!resp.ok) throw new Error("Failed to refresh with Twitch");
 
         const userToken = await resp.json();
 
@@ -28,13 +27,10 @@ export default async function post({ body }) {
                 ...userData,
             };
 
-            return {
-                status: 200,
-                body: token,
-            };
-        } else throw new Error("Authorization failed");
+            return token;
+        } else throw new Error("Refresh authorization failed");
     } catch (err) {
         logger.error(err.message);
-        return { status: 404, body: err.message };
+        return null;
     }
 }

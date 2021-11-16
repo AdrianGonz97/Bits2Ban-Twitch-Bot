@@ -1,5 +1,7 @@
 import tmi from "tmi.js";
 import logger from "../../logger/index.js";
+import refresh from "../oauth/refresh/index.js";
+import { updateUser } from "../../db/index.js";
 
 const clients = new Map();
 const timeoutTime = 10; //60 * 10; // 10 mins
@@ -7,9 +9,85 @@ const bitTarget = 1;
 
 export async function start(req, res) {
     const { access_token, login } = req.body;
+    const client = getClient(access_token, login);
 
-    console.log(access_token, login);
+    try {
+        await client.connect();
 
+        res.status(200).json({
+            message: `Connected bot to ${login}'s channel`,
+        });
+    } catch (err) {
+        res.status(401).json({
+            message: "Bot connection unsuccessful",
+        });
+    }
+}
+
+export async function stop(req, res) {
+    const { login } = req.body;
+    const client = clients.get(login);
+
+    try {
+        await client.disconnect();
+
+        res.status(200).json({ message: `Disconnected bot for ${login}` });
+    } catch (err) {
+        res.status(401).json({
+            message: "Bot disconnection unsuccessful",
+        });
+    }
+}
+
+async function timeoutUser(client, channel, userToBan) {
+    try {
+        // get list of mods for channel
+        const mods = await client.mods(channel);
+        await client.timeout(
+            channel,
+            userToBan,
+            timeoutTime,
+            "Timed out for bits"
+        );
+        if (mods.includes(userToBan)) remodAfterBan(client, channel, userToBan);
+        logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
+    } catch (err) {
+        logger.error(err);
+    }
+}
+
+function remodAfterBan(client, channel, username) {
+    setTimeout(
+        (client, channel, username) => {
+            client
+                .mod(channel, username)
+                .then(() => logger.warn(`[MODDED] [${channel}]: <${username}>`))
+                .catch((err) => logger.error(err));
+        },
+        timeoutTime * 1000 + 10000, // 10 sec buffer
+        client,
+        channel,
+        username
+    );
+}
+
+export async function loadBots(users) {
+    for (const user of users) {
+        // refresh every user token
+        const token = await refresh(user.refresh_token);
+        updateUser(token);
+        logger.info(`Loading ${user.login}'s client.`);
+        const client = getClient(token.access_token, token.login);
+
+        try {
+            await client.connect();
+        } catch (err) {
+            logger.error(err);
+        }
+    }
+}
+
+function getClient(access_token, login) {
     // destroy old client it one already exists
     if (clients.has(login)) {
         logger.info(
@@ -70,62 +148,5 @@ export async function start(req, res) {
 
     clients.set(login, client);
 
-    try {
-        await client.connect();
-
-        res.status(200).json({
-            message: `Connected bot to ${login}'s channel`,
-        });
-    } catch (err) {
-        res.status(401).json({
-            message: "Bot connection unsuccessful",
-        });
-    }
-}
-
-export async function stop(req, res) {
-    const { login } = req.body;
-    const client = clients.get(login);
-
-    try {
-        await client.disconnect();
-
-        res.status(200).json({ message: `Disconnected bot for ${login}` });
-    } catch (err) {
-        res.status(401).json({
-            message: "Bot disconnection unsuccessful",
-        });
-    }
-}
-
-async function timeoutUser(client, channel, userToBan) {
-    try {
-        // get list of mods for channel
-        const mods = await client.mods(channel);
-        await client.timeout(
-            channel,
-            userToBan,
-            timeoutTime,
-            "Timed out for bits"
-        );
-        if (mods.includes(userToBan)) remodAfterBan(client, channel, userToBan);
-        logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
-    } catch (err) {
-        logger.error(err);
-    }
-}
-
-function remodAfterBan(client, channel, username) {
-    setTimeout(
-        (client, channel, username) => {
-            client
-                .mod(channel, username)
-                .then(() => logger.warn(`[MODDED] [${channel}]: <${username}>`))
-                .catch((err) => logger.error(err));
-        },
-        timeoutTime * 1000 + 10000, // 10 sec buffer
-        client,
-        channel,
-        username
-    );
+    return client;
 }

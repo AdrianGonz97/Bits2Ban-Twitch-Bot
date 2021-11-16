@@ -1,35 +1,14 @@
 import logger from "../../../logger/index.js";
 import { oauth } from "../_oauth";
+import { removeUser } from "../../../db/index.js";
 
-export default async function post(request) {
+export default async function post(req, res) {
     logger.info("Revoking access token");
-    const clientId = import.meta.env.VITE_CLIENT_ID;
-    const jwt = request.locals.jwt;
-    const accessToken = getAccessToken(jwt);
+    const clientId = process.env.CLIENT_ID;
+    const { access_token, login } = req.body;
 
     const headers = { "Content-Type": "application/x-www-form-urlencoded" };
-    const body = `client_id=${clientId}&token=${accessToken}`;
-
-    // reset jwt cookie to empty
-    const jwtCookie = cookie.serialize("jwt", "", {
-        path: "/",
-        httpOnly: true,
-    });
-    const validityCookie = cookie.serialize("validUntil", "0", {
-        path: "/",
-        httpOnly: true,
-    });
-
-    // user must have cookie to continue
-    if (!jwt || !accessToken) {
-        return {
-            status: 401,
-            body: { message: "JWT already expired" },
-            headers: {
-                "set-cookie": jwtCookie,
-            },
-        };
-    }
+    const body = `client_id=${clientId}&token=${access_token}`;
 
     try {
         const resp = await oauth("revoke", headers, body, null);
@@ -45,15 +24,11 @@ export default async function post(request) {
                 "Bad request, token may have already been revoked or expired";
         }
 
-        return {
-            status,
-            body: resBody,
-            headers: {
-                "set-cookie": [jwtCookie, validityCookie],
-            },
-        };
+        removeUser(login);
+
+        res.status(status).json(resBody);
     } catch (err) {
         logger.error(err.message);
-        return { status: 404, body: err.message };
+        res.status(404).json({ message: err.message });
     }
 }
