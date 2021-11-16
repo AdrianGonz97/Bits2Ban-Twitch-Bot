@@ -1,6 +1,7 @@
 import logger from "../../../logger/index.js";
-import { oauth } from "../_oauth";
+import { oauth } from "../_oauth.js";
 import { removeUser } from "../../../db/index.js";
+import { stopBot } from "../../bot/index.js";
 
 export default async function post(req, res) {
     logger.info("Revoking access token");

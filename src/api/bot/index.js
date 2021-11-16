@@ -150,3 +150,13 @@ function getClient(access_token, login) {
 
     return client;
 }
+
+export async function stopBot(login) {
+    const client = clients.get(login);
+    try {
+        await client.disconnect();
+        logger.warn(`Disconnected bot for ${login}`);
+    } catch (err) {
+        logger.error(err.message);
+    }
+}

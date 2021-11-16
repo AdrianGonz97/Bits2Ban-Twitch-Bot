@@ -12,7 +12,7 @@ window.onload = function () {
 
     window.localStorage.setItem("state", state);
 
-    const url =
+    const loginUrl =
         `https://id.twitch.tv/oauth2/authorize` +
         `?client_id=${clientId}` +
         `&redirect_uri=https://${baseUrl}/login` +
@@ -21,8 +21,20 @@ window.onload = function () {
         `&force_verify=true` +
         `&state=${state}`;
 
+    const revokeUrl =
+        `https://id.twitch.tv/oauth2/authorize` +
+        `?client_id=${clientId}` +
+        `&redirect_uri=https://${baseUrl}/revoke` +
+        `&response_type=code` +
+        `&scope=${scopes.join("+")}` +
+        `&force_verify=true` +
+        `&state=${state}`;
+
     const login = document.getElementById("login");
-    login.href = url;
+    const revoke = document.getElementById("revoke");
+
+    login.href = loginUrl;
+    revoke.href = revokeUrl;
 };
 
 function generateState() {
