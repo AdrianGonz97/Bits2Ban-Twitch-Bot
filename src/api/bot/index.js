@@ -6,6 +6,7 @@ import { updateUser } from "../../db/index.js";
 const clients = new Map();
 const timeoutTime = process.env.TIMEOUT_TIME;
 const bitTarget = process.env.BIT_AMOUNT;
+const whitelist = ["moobot", "nightbot", "cokakoala"];
 
 export async function start(req, res) {
     const { access_token, login } = req.body;
@@ -24,18 +25,56 @@ export async function start(req, res) {
     }
 }
 
-async function timeoutUser(client, channel, userToBan) {
+async function timeoutUser(client, channel, userToBan, banRequester) {
     try {
         // get list of mods for channel
         const mods = await client.mods(channel);
-        await client.timeout(
-            channel,
-            userToBan,
-            timeoutTime,
-            "Timed out for bits"
-        );
-        if (mods.includes(userToBan)) remodAfterBan(client, channel, userToBan);
-        logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
+        await client.say(channel, `@${userToBan} do you have any final words?`);
+        setTimeout(async () => {
+            try {
+                await client.timeout(
+                    channel,
+                    userToBan,
+                    timeoutTime,
+                    `Timed out for bits - requested by ${banRequester}`
+                );
+                await client.say(
+                    channel,
+                    `@${userToBan} was frostpBonk by @${banRequester}`
+                );
+                if (mods.includes(userToBan))
+                    remodAfterBan(client, channel, userToBan);
+                logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
+            } catch (err) {
+                logger.error(err);
+            }
+        }, 15000);
+    } catch (err) {
+        logger.error(err);
+    }
+}
+
+async function pogOff(client, channel, userToBan) {
+    try {
+        // get list of mods for channel
+        const mods = await client.mods(channel);
+        await client.say(channel, `@${userToBan} ...really? WeirdChamp`);
+        setTimeout(async () => {
+            try {
+                await client.timeout(
+                    channel,
+                    userToBan,
+                    timeoutTime,
+                    `Timed out for bits - uno reverse card`
+                );
+                await client.say(channel, `PogOFF @${userToBan}`);
+                if (mods.includes(userToBan))
+                    remodAfterBan(client, channel, userToBan);
+                logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
+            } catch (err) {
+                logger.error(err);
+            }
+        }, 10000);
     } catch (err) {
         logger.error(err);
     }
@@ -99,7 +138,7 @@ function getClient(access_token, login) {
     client.on("cheer", (channel, userstate, message) => {
         const bitAmount = userstate.bits;
         logger.info(`[CHEER] [${channel}] <${userstate.username}>: ${message}`);
-        if (bitAmount == bitTarget) {
+        if (bitAmount === bitTarget) {
             const regex = /([^ "]*\CHEER[^ "]*)/g; // removes all cheers from string
             const parsedMsg = message
                 .toUpperCase()
@@ -112,7 +151,15 @@ function getClient(access_token, login) {
             );
             if (!!found) {
                 const username = found.slice(1); // removes the @
-                timeoutUser(client, channel, username);
+                const banRequester = userstate.username;
+                // if the banner requests to ban the broadcaster or someone in the whitelist
+                if (username === login || whitelist.includes(username)) {
+                    // ban the requester
+                    pogOff(client, channel, banRequester);
+                } else {
+                    // otherwise, proceed as normal
+                    timeoutUser(client, channel, username, banRequester);
+                }
             } else {
                 logger.warn(
                     `[${channel}] No username was tagged in ${userstate.username}'s message`
