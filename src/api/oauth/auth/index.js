@@ -1,5 +1,6 @@
 import logger from "../../../logger/index.js";
 import getUserInfo from "../_user.js";
+import revoke from "../revoke/index.js";
 import { oauth } from "../_oauth.js";
 import { addUser, removeUser } from "../../../db/index.js";
 
@@ -35,7 +36,9 @@ export default async function post(req, res) {
                 ...userData,
             };
 
-            if (!isRevoking) {
+            if (isRevoking) {
+                await revoke(token);
+            } else {
                 // runs only during normal auth to avoid writing/removing
                 removeUser(token.login);
                 addUser(token);

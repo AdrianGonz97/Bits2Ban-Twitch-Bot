@@ -3,10 +3,10 @@ import { oauth } from "../_oauth.js";
 import { removeUser } from "../../../db/index.js";
 import { stopBot } from "../../bot/index.js";
 
-export default async function post(req, res) {
+export default async function post(token) {
     logger.info("Revoking access token");
     const clientId = process.env.CLIENT_ID;
-    const { access_token, login } = req.body;
+    const { access_token, login } = token;
 
     const headers = { "Content-Type": "application/x-www-form-urlencoded" };
     const body = `client_id=${clientId}&token=${access_token}`;
@@ -27,10 +27,7 @@ export default async function post(req, res) {
 
         removeUser(login);
         stopBot(login);
-
-        res.status(status).json(resBody);
     } catch (err) {
         logger.error(err.message);
-        res.status(404).json({ message: err.message });
     }
 }
