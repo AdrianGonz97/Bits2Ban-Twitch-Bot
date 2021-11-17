@@ -11,8 +11,6 @@ const whitelist = ["moobot", "nightbot", "cokakoala"];
 export async function start(access_token, login) {
     logger.info(`Starting Bot for ${login}`);
     const client = getClient(access_token, login);
-    // clients.set(login, client);
-    logger.warn(`Number of clients connected: ${clients.size}`);
 
     try {
         await client.connect();
@@ -29,7 +27,6 @@ export async function loadBots(users) {
         updateUser(token);
         logger.info(`Loading ${user.login}'s client.`);
         const client = getClient(token.access_token, token.login);
-        // clients.set(user.login, client);
         logger.warn(`Number of clients connected: ${clients.size}`);
 
         try {
@@ -172,11 +169,13 @@ function getClient(access_token, login) {
     client.on("connected", () => {
         logger.info(`Connected to ${login}'s channel`);
         clients.set(login, client);
+        logger.warn(`Number of clients connected: ${clients.size}`);
     });
 
     client.on("disconnected", (reason) => {
         logger.warn(`Disconnected from ${login}'s channel: ${reason}`);
         clients.delete(login);
+        logger.warn(`Number of clients connected: ${clients.size}`);
     });
 
     return client;
