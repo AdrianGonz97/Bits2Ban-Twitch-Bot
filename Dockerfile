@@ -16,7 +16,7 @@ RUN yarn
 RUN mkdir -p node_modules/.cache && chmod -R 777 node_modules/.cache
 
 # add app
-COPY . ./app
+COPY . ./
 
 # start app
 CMD ["node", "src/index.js"]
