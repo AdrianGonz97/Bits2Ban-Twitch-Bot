@@ -44,10 +44,10 @@ export default async function post(req, res) {
                 removeUser(token.login);
                 addUser(token);
                 // starts bot here to avoid login injection
-                start(token.access_token, token.login);
+                await start(token.access_token, token.login);
             }
 
-            res.status(201).json(token);
+            res.status(201).json({ message: "success" });
         } else throw new Error("Authorization failed");
     } catch (err) {
         logger.error(err.message);

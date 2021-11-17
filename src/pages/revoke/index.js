@@ -16,7 +16,5 @@ async function sendCode(code) {
         body: JSON.stringify({ code, isRevoking: true }),
         headers: { "Content-Type": "application/json" },
     });
-    const tokenData = await tokenResp.json();
-    console.log(tokenData);
     window.location = "/";
 }

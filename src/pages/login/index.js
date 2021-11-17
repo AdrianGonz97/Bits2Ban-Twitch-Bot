@@ -11,12 +11,14 @@ if (params.state === window.localStorage.getItem("state")) {
 }
 
 async function sendCode(code) {
-    const tokenResp = await fetch(`https://${window.location.hostname}/auth`, {
+    const resp = await fetch(`https://${window.location.hostname}/auth`, {
         method: "POST",
         body: JSON.stringify({ code, isRevoking: false }),
         headers: { "Content-Type": "application/json" },
     });
-    const tokenData = await tokenResp.json();
-    console.log(tokenData);
-    window.location = "/dashboard";
+    if (resp.ok) {
+        window.location = "/dashboard";
+    } else {
+        window.location = "/error";
+    }
 }

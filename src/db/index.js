@@ -7,9 +7,9 @@ const users = new Datastore({
     autoload: true,
 });
 
-users.loadDatabase(function (err) {
+users.loadDatabase(async (err) => {
     const allUsers = getAllUsers();
-    loadBots(allUsers);
+    await loadBots(allUsers);
 });
 
 export function addUser(user) {

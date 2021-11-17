@@ -26,7 +26,7 @@ export default async function post(token) {
         }
 
         removeUser(login);
-        stopBot(login);
+        await stopBot(login);
     } catch (err) {
         logger.error(err.message);
     }

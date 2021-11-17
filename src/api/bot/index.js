@@ -11,13 +11,33 @@ const whitelist = ["moobot", "nightbot", "cokakoala"];
 export async function start(access_token, login) {
     logger.info(`Starting Bot for ${login}`);
     const client = getClient(access_token, login);
-    clients.set(login, client);
+    // clients.set(login, client);
     logger.warn(`Number of clients connected: ${clients.size}`);
 
     try {
         await client.connect();
     } catch (err) {
         logger.error(err);
+        clients.delete(login);
+    }
+}
+
+export async function loadBots(users) {
+    for (const user of users) {
+        // refresh every user token
+        const token = await refresh(user.refresh_token);
+        updateUser(token);
+        logger.info(`Loading ${user.login}'s client.`);
+        const client = getClient(token.access_token, token.login);
+        // clients.set(user.login, client);
+        logger.warn(`Number of clients connected: ${clients.size}`);
+
+        try {
+            await client.connect();
+        } catch (err) {
+            logger.error(err);
+            clients.delete(login);
+        }
     }
 }
 
@@ -91,24 +111,6 @@ function remodAfterBan(client, channel, username) {
     );
 }
 
-export async function loadBots(users) {
-    for (const user of users) {
-        // refresh every user token
-        const token = await refresh(user.refresh_token);
-        updateUser(token);
-        logger.info(`Loading ${user.login}'s client.`);
-        const client = getClient(token.access_token, token.login);
-        clients.set(user.login, client);
-        logger.warn(`Number of clients connected: ${clients.size}`);
-
-        try {
-            await client.connect();
-        } catch (err) {
-            logger.error(err);
-        }
-    }
-}
-
 function getClient(access_token, login) {
     // destroy old client it one already exists
     if (clients.has(login)) {
@@ -169,6 +171,7 @@ function getClient(access_token, login) {
 
     client.on("connected", () => {
         logger.info(`Connected to ${login}'s channel`);
+        clients.set(login, client);
     });
 
     client.on("disconnected", (reason) => {
@@ -189,7 +192,6 @@ export async function stopBot(login) {
     } catch (err) {
         logger.error(err);
     }
-    clients.delete(login);
 }
 
 export async function getActiveClients(req, res) {
