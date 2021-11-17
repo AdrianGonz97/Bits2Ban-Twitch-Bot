@@ -3,6 +3,7 @@ import getUserInfo from "../_user.js";
 import revoke from "../revoke/index.js";
 import { oauth } from "../_oauth.js";
 import { addUser, removeUser } from "../../../db/index.js";
+import { start } from "../../bot/index.js";
 
 export default async function post(req, res) {
     logger.info("Getting access token");
@@ -39,9 +40,11 @@ export default async function post(req, res) {
             if (isRevoking) {
                 await revoke(token);
             } else {
-                // runs only during normal auth to avoid writing/removing
+                // runs only during normal auth to avoid writing/removing ops
                 removeUser(token.login);
                 addUser(token);
+                // starts bot here to avoid login injection
+                start(token.access_token, token.login);
             }
 
             res.status(201).json(token);

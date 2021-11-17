@@ -8,20 +8,14 @@ const timeoutTime = process.env.TIMEOUT_TIME;
 const bitTarget = process.env.BIT_AMOUNT;
 const whitelist = ["moobot", "nightbot", "cokakoala"];
 
-export async function start(req, res) {
-    const { access_token, login } = req.body;
+export async function start(access_token, login) {
+    logger.info(`Starting Bot for ${login}`);
     const client = getClient(access_token, login);
 
     try {
         await client.connect();
-
-        res.status(200).json({
-            message: `Connected bot to ${login}'s channel`,
-        });
     } catch (err) {
-        res.status(401).json({
-            message: "Bot connection unsuccessful",
-        });
+        logger.error(err.message);
     }
 }
 

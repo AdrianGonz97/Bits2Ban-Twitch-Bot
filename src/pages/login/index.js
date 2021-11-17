@@ -18,13 +18,5 @@ async function sendCode(code) {
     });
     const tokenData = await tokenResp.json();
     console.log(tokenData);
-
-    const botResp = await fetch(`https://${window.location.hostname}/start`, {
-        method: "POST",
-        body: JSON.stringify(tokenData),
-        headers: { "Content-Type": "application/json" },
-    });
-    const botData = await botResp.json();
-    console.log(botData);
     window.location = "/dashboard";
 }
