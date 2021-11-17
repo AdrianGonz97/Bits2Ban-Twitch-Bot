@@ -1,4 +1,4 @@
-window.onload = function () {
+window.onload = async () => {
     const clientId = "8nxu1pu09x07u2q5wufhx4qv7bmk30";
     const baseUrl = window.location.hostname;
     const state = generateState();
@@ -35,6 +35,23 @@ window.onload = function () {
 
     login.href = loginUrl;
     revoke.href = revokeUrl;
+
+    try {
+        const resp = await fetch(`https://${baseUrl}/clients`);
+        const { activeClients } = await resp.json();
+
+        const clients = document.getElementById("clients");
+        const title = document.getElementById("client-title");
+        title.innerText = `Active Clients: ${activeClients.length}`;
+
+        for (const client of activeClients) {
+            const p = document.createElement("p");
+            p.innerText = client;
+            clients.appendChild(p);
+        }
+    } catch (err) {
+        console.error(err);
+    }
 };
 
 function generateState() {

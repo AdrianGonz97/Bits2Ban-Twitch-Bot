@@ -11,11 +11,13 @@ const whitelist = ["moobot", "nightbot", "cokakoala"];
 export async function start(access_token, login) {
     logger.info(`Starting Bot for ${login}`);
     const client = getClient(access_token, login);
+    clients.set(login, client);
+    logger.warn(`Number of clients connected: ${clients.size}`);
 
     try {
         await client.connect();
     } catch (err) {
-        logger.error(err.message);
+        logger.error(err);
     }
 }
 
@@ -96,6 +98,8 @@ export async function loadBots(users) {
         updateUser(token);
         logger.info(`Loading ${user.login}'s client.`);
         const client = getClient(token.access_token, token.login);
+        clients.set(user.login, client);
+        logger.warn(`Number of clients connected: ${clients.size}`);
 
         try {
             await client.connect();
@@ -172,18 +176,23 @@ function getClient(access_token, login) {
         clients.delete(login);
     });
 
-    clients.set(login, client);
-
     return client;
 }
 
 export async function stopBot(login) {
     const client = clients.get(login);
     if (!client) return;
+    logger.warn(`Stopping Bot for [${login}]`);
     try {
         await client.disconnect();
         logger.warn(`Disconnected bot for ${login}`);
     } catch (err) {
-        logger.error(err.message);
+        logger.error(err);
     }
+    clients.delete(login);
+}
+
+export async function getActiveClients(req, res) {
+    const activeClients = [...clients.keys()];
+    res.status(200).json({ activeClients: activeClients });
 }

@@ -9,18 +9,25 @@
     </head>
     <body>
         <h1>Connect with Twitch</h1>
-        <div>
+        <div class="logins">
             <a href="#" id="login">Connect</a>
             <a href="#" id="revoke">Revoke</a>
         </div>
+        <br />
+        <h3 id="client-title">Active Clients:</h3>
+        <div class="clients" id="clients"></div>
     </body>
     <style>
-        div {
+        .logins {
             display: flex;
             gap: 10rem;
         }
         a {
             font-size: 1.2em;
+        }
+        .clients {
+            display: flex;
+            flex-direction: column;
         }
     </style>
 </html>
