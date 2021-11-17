@@ -19,4 +19,4 @@ RUN mkdir -p node_modules/.cache && chmod -R 777 node_modules/.cache
 COPY . ./app
 
 # start app
-CMD ["nodemon", "src/index.js"]
+CMD ["node", "src/index.js"]
