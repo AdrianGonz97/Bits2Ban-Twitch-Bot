@@ -1,4 +1,5 @@
 import tmi from "tmi.js";
+import type { Client } from "tmi.js";
 import logger from "../../logger/index";
 import refresh from "../oauth/refresh/index";
 import { updateUser } from "../../db/index";
@@ -17,7 +18,7 @@ interface ChatBotInterface {
 
 class ChatBotClient implements ChatBotInterface {
     private owner: string;
-    private client: tmi.Client;
+    private client: Client;
     timeoutTime = 609; // seconds
     bitTarget = "2000"; // bits
     message = "was banned by";
