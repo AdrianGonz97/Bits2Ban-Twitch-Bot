@@ -14,7 +14,7 @@ export default async function post(user: common.User) {
     try {
         const resp = await oauth("revoke", headers, body, null);
 
-        if (resp.ok) {
+        if (resp.status >= 200 && resp.status < 300) {
             logger.info("Token revoked successfully");
         } else {
             logger.warn(
