@@ -40,7 +40,7 @@ export function updateUser(user: common.User) {
             ...user,
         },
         {},
-        (err, numRemoved) => {
+        (err) => {
             if (err) {
                 logger.error(err);
             } else {

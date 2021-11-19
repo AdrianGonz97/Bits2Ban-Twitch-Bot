@@ -1,5 +1,4 @@
-import tmi from "tmi.js";
-import type { Client } from "tmi.js";
+import tmi, { Client } from "tmi.js";
 import logger from "../../logger/index";
 import refresh from "../oauth/refresh/index";
 import { updateUser } from "../../db/index";
@@ -79,7 +78,7 @@ class ChatBotClient implements ChatBotInterface {
                         // shortest possible username is 3 chars
                         (el) => el[0] === "@" && el.length > 4
                     );
-                    if (!!found) {
+                    if (found) {
                         const userToBan = found.slice(1); // removes the @
                         // if the banner requests to ban the broadcaster or someone in the whitelist
                         if (
