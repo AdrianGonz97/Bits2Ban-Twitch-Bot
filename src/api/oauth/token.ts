@@ -4,4 +4,4 @@ export type Token = {
     expires_in: number;
     scope: string[];
     token_type: string;
-}
+};

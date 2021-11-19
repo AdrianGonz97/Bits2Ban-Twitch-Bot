@@ -3,12 +3,16 @@ import axios from "axios";
 const base = "https://api.twitch.tv/helix/";
 const clientId = process.env.CLIENT_ID;
 
-export async function get(endpoint: string, token: string, params: Map<string, string> | null) {
+export async function get(
+    endpoint: string,
+    token: string,
+    params: Map<string, string> | null
+) {
     let url = base + endpoint;
     if (params) url += toQueryParams(params);
 
     return axios({
-        method: 'get',
+        method: "get",
         url,
         headers: {
             Authorization: `Bearer ${token}`,
@@ -17,12 +21,17 @@ export async function get(endpoint: string, token: string, params: Map<string, s
     });
 }
 
-export async function post(endpoint: string, body: string, token: string, params: Map<string, string> | null) {
+export async function post(
+    endpoint: string,
+    body: string,
+    token: string,
+    params: Map<string, string> | null
+) {
     let url = base + endpoint;
     if (params) url += toQueryParams(params);
 
     return axios({
-        method: 'post',
+        method: "post",
         url,
         headers: {
             Authorization: `Bearer ${token}`,
@@ -33,13 +42,18 @@ export async function post(endpoint: string, body: string, token: string, params
     });
 }
 
-export async function patch(endpoint: string, body: string, token: string, params: Map<string, string> | null) {
+export async function patch(
+    endpoint: string,
+    body: string,
+    token: string,
+    params: Map<string, string> | null
+) {
     let url = base + endpoint;
     if (params) url += toQueryParams(params);
 
     return axios({
-        method: 'patch',
-        url,        
+        method: "patch",
+        url,
         headers: {
             Authorization: `Bearer ${token}`,
             "Client-Id": `${clientId}`,
@@ -49,12 +63,16 @@ export async function patch(endpoint: string, body: string, token: string, param
     });
 }
 
-export async function del(endpoint: string, token: string, params: Map<string, string> | null) {
+export async function del(
+    endpoint: string,
+    token: string,
+    params: Map<string, string> | null
+) {
     let url = base + endpoint;
     if (params) url += toQueryParams(params);
 
     return axios({
-        method: 'delete',
+        method: "delete",
         url,
         headers: {
             Authorization: `Bearer ${token}`,

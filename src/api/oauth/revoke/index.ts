@@ -15,9 +15,11 @@ export default async function post(user: common.User) {
         const resp = await oauth("revoke", headers, body, null);
 
         if (resp.ok) {
-            logger.info("Token revoked successfully")
+            logger.info("Token revoked successfully");
         } else {
-            logger.warn("Bad request, token may have already been revoked or expired")
+            logger.warn(
+                "Bad request, token may have already been revoked or expired"
+            );
         }
 
         removeUser(login);

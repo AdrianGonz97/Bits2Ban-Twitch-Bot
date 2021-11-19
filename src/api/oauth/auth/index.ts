@@ -9,7 +9,7 @@ import { start } from "../../bot/index";
 type Body = {
     code: string;
     isRevoking: boolean;
-}
+};
 
 export default async function post(req: Request, res: Response) {
     logger.info("Getting access token");
@@ -17,7 +17,7 @@ export default async function post(req: Request, res: Response) {
     const clientSecret = process.env.CLIENT_SECRET;
     const basePath = process.env.URI;
 
-    const { code , isRevoking} = req.body as Body;
+    const { code, isRevoking } = req.body as Body;
 
     const urlParams = new Map();
     const headers = { Accept: "application/json" };

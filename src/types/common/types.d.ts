@@ -5,7 +5,7 @@ declare namespace common {
         expires_in: number;
         scope: string[];
         token_type: string;
-    }
+    };
 
     type User = {
         login: string;
@@ -18,5 +18,5 @@ declare namespace common {
         scope: string[];
         token_type: string;
         _id?: string;
-    }
+    };
 }
