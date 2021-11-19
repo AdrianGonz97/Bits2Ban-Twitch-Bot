@@ -1,8 +1,8 @@
-import logger from "../../../logger/index.js";
-import getUserInfo from "../_user.js";
-import { oauth } from "../_oauth.js";
+import logger from "../../../logger/index";
+import getUserInfo from "../_user";
+import { oauth } from "../_oauth";
 
-export default async function post(rtoken) {
+export default async function post(rtoken: string) {
     logger.info("Getting new refresh token");
     const clientId = process.env.CLIENT_ID;
     const clientSecret = process.env.CLIENT_SECRET;
@@ -16,21 +16,21 @@ export default async function post(rtoken) {
 
     try {
         const resp = await oauth("token", headers, null, params);
-        if (!resp.ok) throw new Error("Failed to refresh with Twitch");
+        if (resp.status < 200 || resp.status > 299) throw new Error("Failed to refresh with Twitch");
 
-        const userToken = await resp.json();
+        const userToken = resp.data as common.Token;
 
         const userData = await getUserInfo(userToken.access_token);
         if (userData) {
-            const token = {
+            const user: common.User = {
                 ...userToken,
                 ...userData,
             };
 
-            return token;
+            return user;
         } else throw new Error("Refresh authorization failed");
     } catch (err) {
-        logger.error(err.message);
+        logger.error(err);
         return null;
     }
 }

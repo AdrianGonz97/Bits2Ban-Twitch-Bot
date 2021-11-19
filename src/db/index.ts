@@ -1,6 +1,6 @@
 import Datastore from "nedb";
-import { loadBots, stopBot } from "../api/bot/index.js";
-import logger from "../logger/index.js";
+import { loadBots, stopBot } from "../api/bot/index";
+import logger from "../logger/index";
 
 const users = new Datastore({
     filename: `./data/users.db`,
@@ -12,8 +12,8 @@ users.loadDatabase(async (err) => {
     await loadBots(allUsers);
 });
 
-export function addUser(user) {
-    users.insert(user, (err, doc) => {
+export function addUser(user: common.User) {
+    users.insert(user, (err, doc: common.User) => {
         if (err) {
             logger.error(err);
         } else {
@@ -22,7 +22,7 @@ export function addUser(user) {
     });
 }
 
-export function removeUser(login) {
+export function removeUser(login: string) {
     users.remove({ login: login }, { multi: true }, (err, numRemoved) => {
         if (err) {
             logger.error(err);
@@ -33,24 +33,24 @@ export function removeUser(login) {
     });
 }
 
-export function updateUser(token) {
+export function updateUser(user: common.User) {
     users.update(
-        { userId: token.userId },
+        { userId: user.userId },
         {
-            ...token,
+            ...user,
         },
         {},
         (err, numRemoved) => {
             if (err) {
                 logger.error(err);
             } else {
-                logger.info(`Updated user ${token.login}'s token`);
+                logger.info(`Updated user ${user.login}'s token`);
             }
         }
     );
 }
 
-export function getUser(login) {
+export function getUser(login: string) {
     let user = null;
     users.findOne({ login: login }, function (err, doc) {
         if (err) {
