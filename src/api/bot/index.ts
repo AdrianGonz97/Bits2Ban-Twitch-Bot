@@ -51,55 +51,35 @@ class ChatBotClient implements ChatBotInterface {
     }
 
     private setEvents() {
-        this.client.on(
-            "cheer",
-            (
-                channel: string,
-                userstate: tmi.ChatUserstate,
-                message: string
-            ) => {
-                const banRequester = userstate.username ?? "";
-                logger.info(
-                    `[CHEER] [${channel}] <${banRequester}>: ${message}`
+        this.client.on("cheer", (channel: string, userstate: tmi.ChatUserstate, message: string) => {
+            const banRequester = userstate.username ?? "";
+            logger.info(`[CHEER] [${channel}] <${banRequester}>: ${message}`);
+            // anyone on the whitelist can cheer at any amount to timeout someone
+            if (userstate.bits === this.bitTarget || this.whitelist.includes(banRequester)) {
+                // removes all "cheer####" from string
+                const regex = /([^ "]*\CHEER[^ "]*)/g;
+                const parsedMsg = message.toUpperCase().replace(regex, "").toLowerCase();
+                const words = parsedMsg.split(" ");
+                const found = words.find(
+                    // shortest possible username is 3 chars
+                    (el) => el[0] === "@" && el.length > 4
                 );
-                // anyone on the whitelist can cheer at any amount to timeout someone
-                if (
-                    userstate.bits === this.bitTarget ||
-                    this.whitelist.includes(banRequester)
-                ) {
-                    // removes all "cheer####" from string
-                    const regex = /([^ "]*\CHEER[^ "]*)/g;
-                    const parsedMsg = message
-                        .toUpperCase()
-                        .replace(regex, "")
-                        .toLowerCase();
-                    const words = parsedMsg.split(" ");
-                    const found = words.find(
-                        // shortest possible username is 3 chars
-                        (el) => el[0] === "@" && el.length > 4
-                    );
-                    if (found) {
-                        const userToBan = found.slice(1); // removes the @
-                        // if the banner requests to ban the broadcaster or someone in the whitelist
-                        if (
-                            userToBan === this.owner ||
-                            this.whitelist.includes(userToBan)
-                        ) {
-                            // ban the requester
-                            this.pogOff(channel, banRequester);
-                        } else {
-                            // otherwise, proceed as normal
-                            this.timeoutUser(channel, userToBan, banRequester);
-                        }
+                if (found) {
+                    const userToBan = found.slice(1); // removes the @
+                    // if the banner requests to ban the broadcaster or someone in the whitelist
+                    if (userToBan === this.owner || this.whitelist.includes(userToBan)) {
+                        // ban the requester
+                        this.pogOff(channel, banRequester);
                     } else {
-                        logger.warn(
-                            `[${channel}] No username was tagged in ${userstate.username}'s message`
-                        );
+                        // otherwise, proceed as normal
+                        this.timeoutUser(channel, userToBan, banRequester);
                     }
+                } else {
+                    logger.warn(`[${channel}] No username was tagged in ${userstate.username}'s message`);
                 }
             }
-        );
-        
+        });
+
         this.client.on("message", (channel, tags, message) => {
             const username = tags.username?.toLowerCase();
             if (username === this.owner || username === "cokakoala") {
@@ -133,24 +113,14 @@ class ChatBotClient implements ChatBotInterface {
             case "message":
                 this.message = args.join(" ");
                 client
-                    .say(
-                        channel,
-                        `When someone is banned, the message will now say "UserA ${this.message} UserB"`
-                    )
+                    .say(channel, `When someone is banned, the message will now say "UserA ${this.message} UserB"`)
                     .catch((err: any) => logger.error(err));
                 break;
             case "amount":
-                if (
-                    !isNaN(args[0]) &&
-                    parseInt(args[0]) < 1000000 &&
-                    parseInt(args[0]) >= 0
-                ) {
+                if (!isNaN(args[0]) && parseInt(args[0]) < 1000000 && parseInt(args[0]) >= 0) {
                     this.bitTarget = args[0];
                     client
-                        .say(
-                            channel,
-                            `Bit target amount has been set to ${args[0]} bits`
-                        )
+                        .say(channel, `Bit target amount has been set to ${args[0]} bits`)
                         .catch((err: any) => logger.error(err));
                 } else {
                     client
@@ -162,47 +132,28 @@ class ChatBotClient implements ChatBotInterface {
                 }
                 break;
             case "time":
-                if (
-                    !isNaN(args[0]) &&
-                    parseInt(args[0]) < 1209600 &&
-                    parseInt(args[0]) >= 1
-                ) {
+                if (!isNaN(args[0]) && parseInt(args[0]) < 1209600 && parseInt(args[0]) >= 1) {
                     this.timeoutTime = parseInt(args[0]);
                     client
-                        .say(
-                            channel,
-                            `Timeout time has been set to ${args[0]} seconds`
-                        )
+                        .say(channel, `Timeout time has been set to ${args[0]} seconds`)
                         .catch((err: any) => logger.error(err));
                 } else {
                     client
-                        .say(
-                            channel,
-                            "Invalid number of seconds. Must be within the range of [1 - 1209600]"
-                        )
+                        .say(channel, "Invalid number of seconds. Must be within the range of [1 - 1209600]")
                         .catch((err: any) => logger.error(err));
                 }
                 break;
             default:
-                client
-                    .say(channel, "Usage: !b2b [msg | amount | time] [args]")
-                    .catch((err: any) => logger.error(err));
+                client.say(channel, "Usage: !b2b [msg | amount | time] [args]").catch((err: any) => logger.error(err));
                 break;
         }
     }
 
-    private async timeoutUser(
-        channel: string,
-        userToBan: string,
-        banRequester: string
-    ) {
+    private async timeoutUser(channel: string, userToBan: string, banRequester: string) {
         try {
             // get list of mods for channel
             const mods = await this.client.mods(channel);
-            await this.client.say(
-                channel,
-                `@${userToBan} do you have any final words?`
-            );
+            await this.client.say(channel, `@${userToBan} do you have any final words?`);
             setTimeout(async () => {
                 try {
                     await this.client.timeout(
@@ -211,12 +162,8 @@ class ChatBotClient implements ChatBotInterface {
                         this.timeoutTime,
                         `Timed out for bits - requested by ${banRequester}`
                     );
-                    await this.client.say(
-                        channel,
-                        `@${userToBan} ${this.message} @${banRequester}`
-                    );
-                    if (mods.includes(userToBan))
-                        this.remodAfterBan(channel, userToBan);
+                    await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
+                    if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan);
                     logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
                 } catch (err) {
                     logger.error(err);
@@ -231,10 +178,7 @@ class ChatBotClient implements ChatBotInterface {
         try {
             // get list of mods for channel
             const mods = await this.client.mods(channel);
-            await this.client.say(
-                channel,
-                `@${userToBan} ...really? WeirdChamp`
-            );
+            await this.client.say(channel, `@${userToBan} ...really? WeirdChamp`);
             setTimeout(async () => {
                 try {
                     await this.client.timeout(
@@ -244,8 +188,7 @@ class ChatBotClient implements ChatBotInterface {
                         `Timed out for bits - uno reverse card`
                     );
                     await this.client.say(channel, `PogOFF @${userToBan}`);
-                    if (mods.includes(userToBan))
-                        this.remodAfterBan(channel, userToBan);
+                    if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan);
                     logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
                 } catch (err) {
                     logger.error(err);
@@ -262,9 +205,7 @@ class ChatBotClient implements ChatBotInterface {
             (client: tmi.Client, channel: string, username: string) => {
                 client
                     .mod(channel, username)
-                    .then(() =>
-                        logger.warn(`[MODDED] [${channel}]: <${username}>`)
-                    )
+                    .then(() => logger.warn(`[MODDED] [${channel}]: <${username}>`))
                     .catch((err: any) => logger.error(err));
             },
             this.timeoutTime * 1000 + 10000, // 10 sec buffer
@@ -289,10 +230,7 @@ export async function loadBots(users: any) {
         if (refreshedUser) {
             updateUser(refreshedUser);
             logger.info(`Loading ${user.login}'s client.`);
-            const client = new ChatBotClient(
-                refreshedUser.access_token,
-                refreshedUser.login
-            );
+            const client = new ChatBotClient(refreshedUser.access_token, refreshedUser.login);
             client.start();
         }
     }

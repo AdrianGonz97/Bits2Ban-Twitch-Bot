@@ -3,11 +3,7 @@ import axios from "axios";
 const base = "https://api.twitch.tv/helix/";
 const clientId = process.env.CLIENT_ID;
 
-export async function get(
-    endpoint: string,
-    token: string,
-    params: Map<string, string> | null
-) {
+export async function get(endpoint: string, token: string, params: Map<string, string> | null) {
     let url = base + endpoint;
     if (params) url += toQueryParams(params);
 
@@ -21,12 +17,7 @@ export async function get(
     });
 }
 
-export async function post(
-    endpoint: string,
-    body: string,
-    token: string,
-    params: Map<string, string> | null
-) {
+export async function post(endpoint: string, body: string, token: string, params: Map<string, string> | null) {
     let url = base + endpoint;
     if (params) url += toQueryParams(params);
 
@@ -42,12 +33,7 @@ export async function post(
     });
 }
 
-export async function patch(
-    endpoint: string,
-    body: string,
-    token: string,
-    params: Map<string, string> | null
-) {
+export async function patch(endpoint: string, body: string, token: string, params: Map<string, string> | null) {
     let url = base + endpoint;
     if (params) url += toQueryParams(params);
 
@@ -63,11 +49,7 @@ export async function patch(
     });
 }
 
-export async function del(
-    endpoint: string,
-    token: string,
-    params: Map<string, string> | null
-) {
+export async function del(endpoint: string, token: string, params: Map<string, string> | null) {
     let url = base + endpoint;
     if (params) url += toQueryParams(params);
 

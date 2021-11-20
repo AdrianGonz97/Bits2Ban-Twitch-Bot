@@ -30,9 +30,7 @@ export default async function post(req: Request, res: Response) {
     try {
         const resp = await oauth("token", headers, null, urlParams);
         if (resp.status < 200 || resp.status > 299)
-            throw new Error(
-                `Failed to authorize with Twitch Status: ${resp.status}`
-            );
+            throw new Error(`Failed to authorize with Twitch Status: ${resp.status}`);
 
         const userToken = resp.data as common.Token;
 

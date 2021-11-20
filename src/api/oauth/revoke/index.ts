@@ -17,9 +17,7 @@ export default async function post(user: common.User) {
         if (resp.status >= 200 && resp.status < 300) {
             logger.info("Token revoked successfully");
         } else {
-            logger.warn(
-                "Bad request, token may have already been revoked or expired"
-            );
+            logger.warn("Bad request, token may have already been revoked or expired");
         }
 
         removeUser(login);

@@ -16,8 +16,7 @@ export default async function post(rtoken: string) {
 
     try {
         const resp = await oauth("token", headers, null, params);
-        if (resp.status < 200 || resp.status > 299)
-            throw new Error("Failed to refresh with Twitch");
+        if (resp.status < 200 || resp.status > 299) throw new Error("Failed to refresh with Twitch");
 
         const userToken = resp.data as common.Token;
 
