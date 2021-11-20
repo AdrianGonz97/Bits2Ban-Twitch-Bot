@@ -1,0 +1,5 @@
+node_modules
+dist
+converage
+.env
+tsconfig.json

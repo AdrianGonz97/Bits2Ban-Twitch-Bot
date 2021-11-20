@@ -1,6 +1,8 @@
 import logger from "../../../logger/index";
 import getUserInfo from "../_user";
-import { oauth } from "../_oauth";
+import oauth from "../_oauth";
+import { User } from "$class/User";
+import { AuthToken } from "$class/AuthToken";
 
 export default async function post(rtoken: string) {
     logger.info("Getting new refresh token");
@@ -18,11 +20,11 @@ export default async function post(rtoken: string) {
         const resp = await oauth("token", headers, null, params);
         if (resp.status < 200 || resp.status > 299) throw new Error("Failed to refresh with Twitch");
 
-        const userToken = resp.data as common.Token;
+        const userToken = resp.data as AuthToken;
 
         const userData = await getUserInfo(userToken.access_token);
         if (userData) {
-            const user: common.User = {
+            const user: User = {
                 ...userToken,
                 ...userData,
             };

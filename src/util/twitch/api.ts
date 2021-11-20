@@ -1,4 +1,5 @@
 import axios from "axios";
+import toQueryParams from "../QueryParams";
 
 const base = "https://api.twitch.tv/helix/";
 const clientId = process.env.CLIENT_ID;
@@ -61,17 +62,4 @@ export async function del(endpoint: string, token: string, params: Map<string, s
             "Client-Id": `${clientId}`,
         },
     });
-}
-
-// converts a Map of variables into a single string for url queries
-// key is the param name and val is the param value
-function toQueryParams(paramsMap: Map<string, string>) {
-    let urlString = "?";
-
-    paramsMap.forEach((val, key) => {
-        if (urlString === "?") urlString += `${key}=${val}`;
-        else urlString += `&${key}=${val}`;
-    });
-
-    return urlString;
 }

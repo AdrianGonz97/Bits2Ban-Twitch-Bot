@@ -2,9 +2,10 @@ import logger from "../../../logger/index";
 import type { Request, Response } from "express";
 import getUserInfo from "../_user";
 import revoke from "../revoke/index";
-import { oauth } from "../_oauth";
+import oauth from "../_oauth";
 import { addUser, removeUser } from "../../../db/index";
 import { start } from "../../bot/index";
+import { AuthToken } from "$class/AuthToken";
 
 type Body = {
     code: string;
@@ -32,7 +33,7 @@ export default async function post(req: Request, res: Response) {
         if (resp.status < 200 || resp.status > 299)
             throw new Error(`Failed to authorize with Twitch Status: ${resp.status}`);
 
-        const userToken = resp.data as common.Token;
+        const userToken = resp.data as AuthToken;
 
         const userData = await getUserInfo(userToken.access_token);
         if (userData) {

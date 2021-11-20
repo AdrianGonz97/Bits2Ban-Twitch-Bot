@@ -1,9 +1,10 @@
 import logger from "../../../logger/index";
-import { oauth } from "../_oauth";
+import oauth from "../_oauth";
 import { removeUser } from "../../../db/index";
 import { stopBot } from "../../bot/index";
+import { User } from "$class/User";
 
-export default async function post(user: common.User) {
+export default async function post(user: User) {
     logger.info("Revoking access token");
     const clientId = process.env.CLIENT_ID;
     const { access_token, login } = user;

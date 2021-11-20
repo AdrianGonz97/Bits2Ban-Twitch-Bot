@@ -1,10 +1,10 @@
 import tmi, { Client } from "tmi.js";
+import type { Request, Response } from "express";
 import logger from "../../logger/index";
 import refresh from "../oauth/refresh/index";
-import { updateUser } from "../../db/index";
-import type { Request, Response } from "express";
+import { updateUser } from "$src/db/index";
+import { User } from "$class/User";
 
-const clients = new Map<string, ChatBotClient>();
 interface ChatBotInterface {
     timeoutTime: number;
     bitTarget: string;
@@ -17,13 +17,18 @@ interface ChatBotInterface {
 
 class ChatBotClient implements ChatBotInterface {
     private owner: string;
+
     private client: Client;
+
     timeoutTime = 609; // seconds
+
     bitTarget = "2000"; // bits
+
     message = "was banned by";
+
     whitelist;
 
-    constructor(access_token: string, login: string) {
+    constructor(accessToken: string, login: string) {
         this.whitelist = ["moobot", "nightbot", "cokakoala", login];
         this.owner = login;
         this.client = new tmi.Client({
@@ -34,10 +39,10 @@ class ChatBotClient implements ChatBotInterface {
             },
             identity: {
                 username: login,
-                password: access_token,
+                password: accessToken,
             },
             channels: [login],
-            logger: logger,
+            logger,
         });
         this.setEvents();
     }
@@ -202,7 +207,7 @@ class ChatBotClient implements ChatBotInterface {
     /* if a mod was timedout, remod the user after the timeout ends */
     private remodAfterBan(channel: string, username: string) {
         setTimeout(
-            (client: tmi.Client, channel: string, username: string) => {
+            (client: tmi.Client, channel, username) => {
                 client
                     .mod(channel, username)
                     .then(() => logger.warn(`[MODDED] [${channel}]: <${username}>`))
@@ -216,24 +221,30 @@ class ChatBotClient implements ChatBotInterface {
     }
 }
 
-export async function start(access_token: string, login: string) {
+const clients = new Map<string, ChatBotClient>();
+
+export async function start(accessToken: string, login: string) {
     logger.info(`Starting chatbot for [${login}]`);
-    const client = new ChatBotClient(access_token, login);
+    const client = new ChatBotClient(accessToken, login);
     client.start();
 }
 
-export async function loadBots(users: any) {
+export async function loadBots(users: User[]) {
+    const results = [];
+    // eslint-disable-next-line no-restricted-syntax
     for (const user of users) {
-        // refresh every user token
-        const refreshedUser = await refresh(user.refresh_token);
+        results.push(refresh(user.refresh_token));
+    }
 
-        if (refreshedUser) {
-            updateUser(refreshedUser);
+    const refreshedUser = await Promise.all(results);
+    refreshedUser.forEach((user) => {
+        if (user) {
+            updateUser(user);
             logger.info(`Loading ${user.login}'s client.`);
-            const client = new ChatBotClient(refreshedUser.access_token, refreshedUser.login);
+            const client = new ChatBotClient(user.access_token, user.login);
             client.start();
         }
-    }
+    });
 }
 
 export async function stopBot(login: string) {
@@ -245,5 +256,5 @@ export async function stopBot(login: string) {
 
 export function getActiveClients(req: Request, res: Response) {
     const activeClients = [...clients.keys()];
-    res.status(200).json({ activeClients: activeClients });
+    res.status(200).json({ activeClients });
 }

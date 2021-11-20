@@ -1,7 +1,9 @@
 import axios from "axios";
+import toQueryParams from "$src/util/QueryParams";
+
 const base = "https://id.twitch.tv/oauth2/";
 
-export async function oauth(
+export default async function oauth(
     endpoint: string,
     headers: any,
     body: string | null = null,
@@ -16,17 +18,4 @@ export async function oauth(
         headers,
         data: body,
     });
-}
-
-// converts a Map of variables into a single string for url queries
-// key is the param name and val is the param value
-function toQueryParams(paramsMap: Map<string, string>) {
-    let urlString = "?";
-
-    paramsMap.forEach((val, key) => {
-        if (urlString === "?") urlString += `${key}=${val}`;
-        else urlString += `&${key}=${val}`;
-    });
-
-    return urlString;
 }

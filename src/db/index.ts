@@ -1,19 +1,15 @@
 import Datastore from "nedb";
 import { loadBots, stopBot } from "../api/bot/index";
 import logger from "../logger/index";
+import { User } from "$class/User";
 
 const users = new Datastore({
     filename: `./data/users.db`,
     autoload: true,
 });
 
-users.loadDatabase(async (err) => {
-    const allUsers = getAllUsers();
-    await loadBots(allUsers);
-});
-
-export function addUser(user: common.User) {
-    users.insert(user, (err, doc: common.User) => {
+export function addUser(user: User) {
+    users.insert(user, (err, doc: User) => {
         if (err) {
             logger.error(err);
         } else {
@@ -33,7 +29,7 @@ export function removeUser(login: string) {
     });
 }
 
-export function updateUser(user: common.User) {
+export function updateUser(user: User) {
     users.update(
         { userId: user.userId },
         {
@@ -67,3 +63,8 @@ export function getAllUsers() {
     const allUsers = users.getAllData();
     return allUsers;
 }
+
+users.loadDatabase(async () => {
+    const allUsers = getAllUsers();
+    await loadBots(allUsers);
+});

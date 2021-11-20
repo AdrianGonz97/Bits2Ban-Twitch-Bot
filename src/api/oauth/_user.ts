@@ -1,19 +1,6 @@
 import logger from "../../logger/index";
 import { get as twitchGet } from "../../util/twitch/api";
-
-type UserInfo = {
-    id: string;
-    login: string;
-    display_name: string;
-    type: string;
-    broadcaster_type: string;
-    description: string;
-    profile_image_url: string;
-    offline_image_url: string;
-    view_count: number;
-    email: string;
-    created_at: string;
-};
+import { UserInfo } from "$class/UserInfo";
 
 // returns null if userinfo fails to fetch from twitch
 export default async function getUserInfo(accessToken: string) {
