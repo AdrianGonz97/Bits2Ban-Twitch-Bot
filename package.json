@@ -6,13 +6,13 @@
     "scripts": {
         "start:dev": "nodemon",
         "start:prod": "node -r ts-node/register/transpile-only -r tsconfig-paths/register ./dist/src/app.js",
-        "build": "yarn clean && tsc && yarn copy-files",
+        "build": "yarn clean && tsc -p . && yarn copy-files",
         "clean": "rm -rf ./dist",
         "copy-files": "cp -r ./src/pages/ ./dist/src",
         "format": "prettier --config .prettierrc 'src/**/*.ts' --write"
     },
     "author": "",
-    "license": "ISC",
+    "license": "GPL-3.0",
     "exports": "./dist/app.js",
     "dependencies": {
         "axios": "^0.24.0",
@@ -24,6 +24,7 @@
     "devDependencies": {
         "@types/express": "^4.17.13",
         "@types/nedb": "^1.8.12",
+        "@types/node": "^16.11.9",
         "@types/tmi.js": "^1.8.0",
         "@typescript-eslint/eslint-plugin": "^5.4.0",
         "@typescript-eslint/parser": "^5.4.0",
