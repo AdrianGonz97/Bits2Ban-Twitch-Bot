@@ -1,7 +1,7 @@
 import express from "express";
-import logger from "./logger/index";
-import auth from "./api/oauth/auth/index";
-import { getActiveClients } from "./api/bot/index";
+import logger from "$src/logger/index";
+import auth from "$src/api/oauth/auth/index";
+import { getActiveClients } from "$src/chatbot/index";
 
 const app = express();
 

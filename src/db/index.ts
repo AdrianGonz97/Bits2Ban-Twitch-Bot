@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import Datastore from "nedb";
-import { stopBot } from "../api/bot/index";
+import { stopBot } from "$src/chatbot/index";
 import refresh from "$src/api/oauth/refresh/index";
 import logger from "$logger";
 import { User } from "$class/User";

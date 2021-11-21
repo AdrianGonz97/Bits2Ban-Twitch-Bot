@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import oauth from "../_oauth";
-import { stopBot } from "../../bot/index";
+import { stopBot } from "$src/chatbot/index";
 import { removeUser } from "$src/db/index";
 import logger from "$logger";
 import { User } from "$class/User";

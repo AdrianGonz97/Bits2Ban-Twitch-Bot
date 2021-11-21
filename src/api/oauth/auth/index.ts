@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import getUserInfo from "../_user";
 import revoke from "../revoke/index";
 import oauth from "../_oauth";
-import { start } from "../../bot/index";
+import { start } from "$src/chatbot/index";
 import { addUser, removeUser } from "$src/db/index";
 import logger from "$logger";
 import { AuthToken } from "$class/AuthToken";
