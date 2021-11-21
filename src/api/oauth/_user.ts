@@ -1,5 +1,5 @@
-import logger from "../../logger/index";
-import { get as twitchGet } from "../../util/twitch/api";
+import { get as twitchGet } from "$src/util/twitch/api";
+import logger from "$logger";
 import { UserInfo } from "$class/UserInfo";
 
 // returns null if userinfo fails to fetch from twitch

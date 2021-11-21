@@ -6,9 +6,8 @@ import { getActiveClients } from "./api/bot/index";
 const app = express();
 
 app.use(express.json());
-app.use(express.static(__dirname + "/pages"));
+app.use(express.static(`${__dirname}/pages`));
 app.post("/auth", auth);
 app.get("/clients", getActiveClients);
 
-app.listen(process.env.PORT);
-logger.info(`Running on port ${process.env.PORT}`);
+app.listen(process.env.PORT, () => logger.info(`Running on port ${process.env.PORT}`));

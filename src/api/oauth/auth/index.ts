@@ -1,10 +1,10 @@
-import logger from "../../../logger/index";
 import type { Request, Response } from "express";
 import getUserInfo from "../_user";
 import revoke from "../revoke/index";
 import oauth from "../_oauth";
-import { addUser, removeUser } from "../../../db/index";
+import { addUser, removeUser } from "$src/db/index";
 import { start } from "../../bot/index";
+import logger from "$logger";
 import { AuthToken } from "$class/AuthToken";
 
 type Body = {

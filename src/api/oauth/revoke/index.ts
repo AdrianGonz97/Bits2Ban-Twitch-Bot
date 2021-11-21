@@ -1,7 +1,7 @@
-import logger from "../../../logger/index";
 import oauth from "../_oauth";
-import { removeUser } from "../../../db/index";
+import { removeUser } from "$src/db/index";
 import { stopBot } from "../../bot/index";
+import logger from "$logger";
 import { User } from "$class/User";
 
 export default async function post(user: User) {

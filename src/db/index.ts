@@ -1,7 +1,10 @@
+/* eslint-disable no-underscore-dangle */
 import Datastore from "nedb";
-import { loadBots, stopBot } from "../api/bot/index";
-import logger from "../logger/index";
+import { stopBot } from "../api/bot/index";
+import refresh from "$src/api/oauth/refresh/index";
+import logger from "$logger";
 import { User } from "$class/User";
+import ChatBotClient from "$class/ChatBotClient";
 
 const users = new Datastore({
     filename: `./data/users.db`,
@@ -19,7 +22,7 @@ export function addUser(user: User) {
 }
 
 export function removeUser(login: string) {
-    users.remove({ login: login }, { multi: true }, (err, numRemoved) => {
+    users.remove({ login }, { multi: true }, (err, numRemoved) => {
         if (err) {
             logger.error(err);
         } else {
@@ -48,7 +51,7 @@ export function updateUser(user: User) {
 
 export function getUser(login: string) {
     let user = null;
-    users.findOne({ login: login }, function (err, doc) {
+    users.findOne({ login }, (err, doc) => {
         if (err) {
             logger.error(err);
         } else {
@@ -62,6 +65,24 @@ export function getUser(login: string) {
 export function getAllUsers() {
     const allUsers = users.getAllData();
     return allUsers;
+}
+
+async function loadBots(savedUsers: User[]) {
+    const results = [];
+    // eslint-disable-next-line no-restricted-syntax
+    for (const user of savedUsers) {
+        results.push(refresh(user.refresh_token));
+    }
+
+    const refreshedUser = await Promise.all(results);
+    refreshedUser.forEach((user) => {
+        if (user) {
+            updateUser(user);
+            logger.info(`Loading ${user.login}'s client.`);
+            const client = new ChatBotClient(user.access_token, user.login);
+            client.start();
+        }
+    });
 }
 
 users.loadDatabase(async () => {

@@ -1,6 +1,6 @@
-import logger from "../../../logger/index";
 import getUserInfo from "../_user";
 import oauth from "../_oauth";
+import logger from "$logger";
 import { User } from "$class/User";
 import { AuthToken } from "$class/AuthToken";
 
