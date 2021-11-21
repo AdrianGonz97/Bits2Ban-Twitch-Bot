@@ -101,6 +101,7 @@ export default class ChatBotClient {
         });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private commandHandler(client: Client, channel: string, args: any) {
         const arg = args.shift();
         switch (arg) {
@@ -109,7 +110,7 @@ export default class ChatBotClient {
                 this.message = args.join(" ");
                 client
                     .say(channel, `When someone is banned, the message will now say "UserA ${this.message} UserB"`)
-                    .catch((err: any) => logger.error(err));
+                    .catch((err) => logger.error(err));
                 break;
             case "amount":
                 if (!isNaN(args[0]) && parseInt(args[0]) < 1000000 && parseInt(args[0]) >= 0) {

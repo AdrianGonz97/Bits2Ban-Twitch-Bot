@@ -2,8 +2,8 @@ import type { Request, Response } from "express";
 import getUserInfo from "../_user";
 import revoke from "../revoke/index";
 import oauth from "../_oauth";
-import { addUser, removeUser } from "$src/db/index";
 import { start } from "../../bot/index";
+import { addUser, removeUser } from "$src/db/index";
 import logger from "$logger";
 import { AuthToken } from "$class/AuthToken";
 
@@ -54,8 +54,11 @@ export default async function post(req: Request, res: Response) {
 
             res.status(201).json({ message: "success" });
         } else throw new Error("Authorization failed");
-    } catch (err: any) {
-        logger.error(err);
-        res.status(500).json({ message: err.message });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err) {
+        logger.error(err as Error);
+        if (err instanceof Error) {
+            res.status(500).json({ message: err.message });
+        }
     }
 }

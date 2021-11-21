@@ -30,7 +30,8 @@ export default async function post(rtoken: string) {
             };
 
             return user;
-        } else throw new Error("Refresh authorization failed");
+        }
+        throw new Error("Refresh authorization failed");
     } catch (err) {
         logger.error(err);
         return null;

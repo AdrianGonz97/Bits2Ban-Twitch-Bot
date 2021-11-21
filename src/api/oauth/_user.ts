@@ -9,8 +9,8 @@ export default async function getUserInfo(accessToken: string) {
         const resp = await twitchGet("users", accessToken, null);
         if (resp.status >= 200 && resp.status < 300) {
             logger.info("Got new user info");
-            const data: { data: UserInfo[] } = resp.data;
-            const user = data.data[0];
+            const result: { data: UserInfo[] } = resp.data;
+            const user = result.data[0];
 
             return {
                 displayName: user.display_name,

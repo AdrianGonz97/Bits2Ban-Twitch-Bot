@@ -1,11 +1,10 @@
-import axios from "axios";
+import axios, { AxiosRequestHeaders } from "axios";
 import toQueryParams from "$src/util/QueryParams";
 
 const base = "https://id.twitch.tv/oauth2/";
-
 export default async function oauth(
     endpoint: string,
-    headers: any,
+    headers: AxiosRequestHeaders,
     body: string | null = null,
     params: Map<string, string> | null = null
 ) {
