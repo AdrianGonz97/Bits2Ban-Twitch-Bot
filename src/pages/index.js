@@ -1,4 +1,5 @@
 window.onload = async () => {
+    // needs to be changed to user specific twitch app
     const clientId = "8nxu1pu09x07u2q5wufhx4qv7bmk30";
     const baseUrl = window.location.hostname;
     const state = generateState();

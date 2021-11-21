@@ -7,7 +7,7 @@ if (params.state === window.localStorage.getItem("state")) {
     sendCode(params.code);
 } else {
     // redirect to error pages
-    window.location = "error";
+    window.location = "/error";
 }
 
 async function sendCode(code) {

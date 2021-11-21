@@ -1,17 +1,24 @@
-import logger from "../../../logger/index.js";
-import getUserInfo from "../_user.js";
-import revoke from "../revoke/index.js";
-import { oauth } from "../_oauth.js";
-import { addUser, removeUser } from "../../../db/index.js";
-import { start } from "../../bot/index.js";
+import type { Request, Response } from "express";
+import getUserInfo from "../_user";
+import revoke from "../revoke/index";
+import oauth from "../_oauth";
+import { start } from "$src/chatbot/index";
+import { addUser, removeUser } from "$src/db/index";
+import logger from "$logger";
+import { AuthToken } from "$class/AuthToken";
 
-export default async function post(req, res) {
+type Body = {
+    code: string;
+    isRevoking: boolean;
+};
+
+export default async function post(req: Request, res: Response) {
     logger.info("Getting access token");
     const clientId = process.env.CLIENT_ID;
     const clientSecret = process.env.CLIENT_SECRET;
     const basePath = process.env.URI;
 
-    const { code, isRevoking } = req.body;
+    const { code, isRevoking } = req.body as Body;
 
     const urlParams = new Map();
     const headers = { Accept: "application/json" };
@@ -23,12 +30,10 @@ export default async function post(req, res) {
 
     try {
         const resp = await oauth("token", headers, null, urlParams);
-        if (!resp.ok)
-            throw new Error(
-                `Failed to authorize with Twitch Status: ${resp.status}`
-            );
+        if (resp.status < 200 || resp.status > 299)
+            throw new Error(`Failed to authorize with Twitch Status: ${resp.status}`);
 
-        const userToken = await resp.json();
+        const userToken = resp.data as AuthToken;
 
         const userData = await getUserInfo(userToken.access_token);
         if (userData) {
@@ -49,8 +54,11 @@ export default async function post(req, res) {
 
             res.status(201).json({ message: "success" });
         } else throw new Error("Authorization failed");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err) {
-        logger.error(err.message);
-        res.status(500).json({ message: err.message });
+        logger.error(err as Error);
+        if (err instanceof Error) {
+            res.status(500).json({ message: err.message });
+        }
     }
 }
