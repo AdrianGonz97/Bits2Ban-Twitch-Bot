@@ -77,15 +77,15 @@ This guide is organized into 3 sections. Below is the **Common Guide** section. 
   - Otherwise, add your URI with the endpoints `/login` and `/revoke` appended to the back. For example, `https://example.com/login` and `https://example.com/revoke`.
 - **This step is important** - Open the project folder and navigate to `src/pages/index.js` and open that file in a text editor.
   - In the text editor, look at line 3 where it says `const clientId = "REPLACE-ME";`. Replace the `REPLACE-ME` in that line with the same value as *YOUR* **CLIENT_ID** that you had set earlier.
-  - The result should like something like this `const clientId = "ndHag8QJdLhysoPqbLvNLBFvtATfNyZ2PMYoFn2k";`, but instead of my example of random characters, it should be the CLIENT_ID of your registered Twitch application (the very same you pasted in your `.env` file a few steps ago.
+  - The result should like something like this `const clientId = "ndHag8QJdLhysoPqbLvNLBFvtATfNyZ2PMYoFn2k";`, but instead of my example of random characters, it should be the CLIENT_ID of your registered Twitch application (the very same you pasted in your `.env` file a few steps ago).
 
 ### Node:
-- Next, open a terminal and navigate back to the root directory of the project (this is the same directory where the `src` folder, `.env` file, and `Dockerfile` are located. 
+- Next, open a terminal and navigate back to the root directory of the project (this is the same directory where the `src` folder, `.env` file, and `Dockerfile` are located). 
 - Run the following command: `yarn --prod`. This will install all of the necessary dependencies for the application.
 - After the installation, run the following command: `yarn start:prod`. This will start the application.
 
 ### Docker:
-- Next, open a terminal and navigate back to the root directory of the project (this is the same directory where the `src` folder, `.env` file, and `Dockerfile` are located. 
+- Next, open a terminal and navigate back to the root directory of the project (this is the same directory where the `src` folder, `.env` file, and `Dockerfile` are located). 
 - Run the following command: `docker-compose build`
 - After the image has been built, you can start the docker container by running the following: `docker-compose up`
 
