@@ -105,16 +105,22 @@ export default class ChatBotClient {
     private commandHandler(client: Client, channel: string, args: any) {
         const arg = args.shift();
         switch (arg) {
-            case "msg":
-            case "message":
+            case "msg": {
+                const newMsg = args.join(" ");
+                logger.warn(`Channel [${channel}] has changed timeout message from ${this.message} --> ${newMsg}`);
                 this.message = args.join(" ");
                 client
                     .say(channel, `When someone is banned, the message will now say "UserA ${this.message} UserB"`)
                     .catch((err) => logger.error(err));
                 break;
-            case "amount":
+            }
+            case "cost": {
                 if (!isNaN(args[0]) && parseInt(args[0]) < 1000000 && parseInt(args[0]) >= 0) {
-                    this.bitTarget = args.shift();
+                    const newBitTarget = args.shift();
+                    logger.warn(
+                        `Channel [${channel}] has changed bit target from ${this.bitTarget} --> ${newBitTarget}`
+                    );
+                    this.bitTarget = newBitTarget;
                     client
                         .say(channel, `Bit target amount has been set to ${this.bitTarget} bits`)
                         .catch((err) => logger.error(err));
@@ -127,9 +133,14 @@ export default class ChatBotClient {
                         .catch((err) => logger.error(err));
                 }
                 break;
-            case "time":
+            }
+            case "time": {
                 if (!isNaN(args[0]) && parseInt(args[0]) < 1209600 && parseInt(args[0]) >= 1) {
-                    this.timeoutTime = parseInt(args[0]);
+                    const newTime = parseInt(args[0]);
+                    logger.warn(
+                        `Channel [${channel}] has changed timeout time from ${this.timeoutTime} --> ${newTime}`
+                    );
+                    this.timeoutTime = newTime;
                     client
                         .say(channel, `Timeout time has been set to ${this.timeoutTime} seconds`)
                         .catch((err) => logger.error(err));
@@ -139,8 +150,9 @@ export default class ChatBotClient {
                         .catch((err) => logger.error(err));
                 }
                 break;
+            }
             default:
-                client.say(channel, "Usage: !b2b [msg | amount | time] [args]").catch((err) => logger.error(err));
+                client.say(channel, "Usage: !b2b [msg | cost | time] [args]").catch((err) => logger.error(err));
                 break;
         }
     }
