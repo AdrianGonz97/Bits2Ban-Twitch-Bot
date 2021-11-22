@@ -1,4 +1,10 @@
+/* eslint-disable import/first */
+/* eslint-disable import/order */
+import dotenv from "dotenv";
 import "module-alias/register";
+
+dotenv.config();
+
 import express from "express";
 import logger from "$logger";
 import auth from "$src/api/oauth/auth/index";
