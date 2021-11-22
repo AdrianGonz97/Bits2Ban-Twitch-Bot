@@ -68,11 +68,8 @@ export function getAllUsers() {
 }
 
 async function loadBots(savedUsers: User[]) {
-    const results = [];
-    // eslint-disable-next-line no-restricted-syntax
-    for (const user of savedUsers) {
-        results.push(refresh(user.refresh_token));
-    }
+    const results: Promise<User | null>[] = [];
+    savedUsers.forEach((user) => results.push(refresh(user.refresh_token)));
 
     const refreshedUser = await Promise.all(results);
     refreshedUser.forEach((user) => {

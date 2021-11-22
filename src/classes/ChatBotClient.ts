@@ -1,9 +1,10 @@
 /* eslint-disable no-restricted-globals */
 /* eslint-disable radix */
 import tmi, { Client } from "tmi.js";
+import { EventEmitter } from "events";
 import logger from "$logger";
 
-export default class ChatBotClient {
+export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
 
     private owner: string;
@@ -14,11 +15,12 @@ export default class ChatBotClient {
 
     bitTarget = "2000"; // bits
 
-    message = "was banned by";
+    message = "was banned by"; // BannedUser was banned by BanRequester
 
     whitelist;
 
     constructor(accessToken: string, login: string) {
+        super();
         this.whitelist = ["moobot", "nightbot", "cokakoala", login];
         this.owner = login;
         this.client = new tmi.Client({
@@ -112,6 +114,7 @@ export default class ChatBotClient {
                 client
                     .say(channel, `When someone is banned, the message will now say "UserA ${this.message} UserB"`)
                     .catch((err) => logger.error(err));
+                this.emit("message", this.owner, this.message);
                 break;
             }
             case "cost": {
@@ -124,6 +127,7 @@ export default class ChatBotClient {
                     client
                         .say(channel, `Bit target amount has been set to ${this.bitTarget} bits`)
                         .catch((err) => logger.error(err));
+                    this.emit("cost", this.owner, this.bitTarget);
                 } else {
                     client
                         .say(
@@ -144,6 +148,7 @@ export default class ChatBotClient {
                     client
                         .say(channel, `Timeout time has been set to ${this.timeoutTime} seconds`)
                         .catch((err) => logger.error(err));
+                    this.emit("time", this.owner, this.bitTarget);
                 } else {
                     client
                         .say(channel, "Invalid number of seconds. Must be within the range of [1 - 1209600]")
