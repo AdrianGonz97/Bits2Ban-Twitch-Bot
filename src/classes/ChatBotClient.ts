@@ -1,26 +1,30 @@
+/* eslint-disable camelcase */
 /* eslint-disable no-restricted-globals */
 /* eslint-disable radix */
 import tmi, { Client } from "tmi.js";
+import { EventEmitter } from "events";
 import logger from "$logger";
+import { User } from "$class/User";
 
-export default class ChatBotClient {
+export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
 
     private owner: string;
 
     private client: Client;
 
-    timeoutTime = 609; // seconds
+    timeoutTime; // seconds
 
-    bitTarget = "2000"; // bits
+    bitTarget; // bits
 
-    message = "was banned by";
+    message; // BannedUser *message* BanRequester
 
     whitelist;
 
-    constructor(accessToken: string, login: string) {
-        this.whitelist = ["moobot", "nightbot", "cokakoala", login];
-        this.owner = login;
+    constructor(user: User) {
+        super();
+        this.whitelist = ["moobot", "nightbot", "cokakoala", user.login];
+        this.owner = user.login;
         this.client = new tmi.Client({
             options: { debug: true },
             connection: {
@@ -28,12 +32,15 @@ export default class ChatBotClient {
                 secure: true,
             },
             identity: {
-                username: login,
-                password: accessToken,
+                username: user.login,
+                password: user.access_token,
             },
-            channels: [login],
+            channels: [user.login],
             logger,
         });
+        this.timeoutTime = user.timeoutTime;
+        this.bitTarget = user.bitTarget;
+        this.message = user.message;
         this.setEvents();
     }
 
@@ -105,19 +112,27 @@ export default class ChatBotClient {
     private commandHandler(client: Client, channel: string, args: any) {
         const arg = args.shift();
         switch (arg) {
-            case "msg":
-            case "message":
+            case "msg": {
+                const newMsg = args.join(" ");
+                logger.warn(`Channel [${channel}] has changed timeout message from ${this.message} --> ${newMsg}`);
                 this.message = args.join(" ");
                 client
                     .say(channel, `When someone is banned, the message will now say "UserA ${this.message} UserB"`)
                     .catch((err) => logger.error(err));
+                this.emit("message", this.owner, this.message);
                 break;
-            case "amount":
+            }
+            case "cost": {
                 if (!isNaN(args[0]) && parseInt(args[0]) < 1000000 && parseInt(args[0]) >= 0) {
-                    this.bitTarget = args.shift();
+                    const newBitTarget = args.shift();
+                    logger.warn(
+                        `Channel [${channel}] has changed bit target from ${this.bitTarget} --> ${newBitTarget}`
+                    );
+                    this.bitTarget = newBitTarget;
                     client
                         .say(channel, `Bit target amount has been set to ${this.bitTarget} bits`)
                         .catch((err) => logger.error(err));
+                    this.emit("cost", this.owner, this.bitTarget);
                 } else {
                     client
                         .say(
@@ -127,20 +142,27 @@ export default class ChatBotClient {
                         .catch((err) => logger.error(err));
                 }
                 break;
-            case "time":
+            }
+            case "time": {
                 if (!isNaN(args[0]) && parseInt(args[0]) < 1209600 && parseInt(args[0]) >= 1) {
-                    this.timeoutTime = parseInt(args[0]);
+                    const newTime = parseInt(args[0]);
+                    logger.warn(
+                        `Channel [${channel}] has changed timeout time from ${this.timeoutTime} --> ${newTime}`
+                    );
+                    this.timeoutTime = newTime;
                     client
                         .say(channel, `Timeout time has been set to ${this.timeoutTime} seconds`)
                         .catch((err) => logger.error(err));
+                    this.emit("time", this.owner, this.timeoutTime);
                 } else {
                     client
                         .say(channel, "Invalid number of seconds. Must be within the range of [1 - 1209600]")
                         .catch((err) => logger.error(err));
                 }
                 break;
+            }
             default:
-                client.say(channel, "Usage: !b2b [msg | amount | time] [args]").catch((err) => logger.error(err));
+                client.say(channel, "Usage: !b2b [msg | cost | time] [args]").catch((err) => logger.error(err));
                 break;
         }
     }

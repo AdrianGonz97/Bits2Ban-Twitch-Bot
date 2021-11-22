@@ -8,5 +8,8 @@ export type User = {
     expires_in: number;
     scope: string[];
     token_type: string;
+    message: string;
+    bitTarget: string;
+    timeoutTime: number;
     _id?: string;
 };

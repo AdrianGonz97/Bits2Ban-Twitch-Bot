@@ -1,11 +1,14 @@
 import type { Request, Response } from "express";
 import logger from "$logger";
 import ChatBotClient from "$class/ChatBotClient";
+import { addListeners } from "$src/db/index";
+import { User } from "$class/User";
 
-export async function start(accessToken: string, login: string) {
-    logger.info(`Starting chatbot for [${login}]`);
-    const client = new ChatBotClient(accessToken, login);
+export async function start(user: User) {
+    logger.info(`Starting chatbot for [${user.login}]`);
+    const client = new ChatBotClient(user);
     client.start();
+    addListeners(client);
 }
 
 export async function stopBot(login: string) {

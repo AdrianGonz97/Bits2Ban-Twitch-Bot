@@ -3,9 +3,9 @@ import oauth from "../_oauth";
 import { stopBot } from "$src/chatbot/index";
 import { removeUser } from "$src/db/index";
 import logger from "$logger";
-import { User } from "$class/User";
 
-export default async function post(user: User) {
+type Revoke = { access_token: string; login: string };
+export default async function post(user: Revoke) {
     logger.info("Revoking access token");
     const clientId = process.env.CLIENT_ID;
     const { access_token, login } = user;

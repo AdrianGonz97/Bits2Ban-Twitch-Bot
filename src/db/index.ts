@@ -1,6 +1,5 @@
 /* eslint-disable no-underscore-dangle */
 import Datastore from "nedb";
-import { stopBot } from "$src/chatbot/index";
 import refresh from "$src/api/oauth/refresh/index";
 import logger from "$logger";
 import { User } from "$class/User";
@@ -27,7 +26,6 @@ export function removeUser(login: string) {
             logger.error(err);
         } else {
             logger.info(`Deleted <${login}> Docs Removed: ${numRemoved}`);
-            stopBot(login);
         }
     });
 }
@@ -49,11 +47,30 @@ export function updateUser(user: User) {
     );
 }
 
+type Field = { message?: string; bitTarget?: string; timeoutTime?: number };
+function updateField(login: string, fields: Field) {
+    users.update(
+        { login },
+        {
+            $set: { ...fields },
+        },
+        {},
+        (err) => {
+            if (err) {
+                logger.error(err);
+            } else {
+                logger.info(`Updated user ${login}'s field`);
+            }
+        }
+    );
+}
+
 export function getUser(login: string) {
-    let user = null;
-    users.findOne({ login }, (err, doc) => {
+    let user;
+    users.findOne({ login }, (err, doc: User) => {
         if (err) {
             logger.error(err);
+            user = null;
         } else {
             logger.info(`User found: ${doc.login}`);
             user = doc;
@@ -67,20 +84,30 @@ export function getAllUsers() {
     return allUsers;
 }
 
+export function addListeners(client: ChatBotClient) {
+    client.on("message", (owner: string, message: string) => {
+        updateField(owner, { message } as Field);
+    });
+    client.on("cost", (owner: string, bitTarget: string) => {
+        updateField(owner, { bitTarget } as Field);
+    });
+    client.on("time", (owner: string, timeoutTime: number) => {
+        updateField(owner, { timeoutTime } as Field);
+    });
+}
+
 async function loadBots(savedUsers: User[]) {
-    const results = [];
-    // eslint-disable-next-line no-restricted-syntax
-    for (const user of savedUsers) {
-        results.push(refresh(user.refresh_token));
-    }
+    const results: Promise<User | null>[] = [];
+    savedUsers.forEach((user) => results.push(refresh(user)));
 
     const refreshedUser = await Promise.all(results);
     refreshedUser.forEach((user) => {
         if (user) {
             updateUser(user);
             logger.info(`Loading ${user.login}'s client.`);
-            const client = new ChatBotClient(user.access_token, user.login);
+            const client = new ChatBotClient(user);
             client.start();
+            addListeners(client);
         }
     });
 }

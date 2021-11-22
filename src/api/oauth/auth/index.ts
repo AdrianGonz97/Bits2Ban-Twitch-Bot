@@ -2,10 +2,11 @@ import type { Request, Response } from "express";
 import getUserInfo from "../_user";
 import revoke from "../revoke/index";
 import oauth from "../_oauth";
-import { start } from "$src/chatbot/index";
+import { start, stopBot } from "$src/chatbot/index";
 import { addUser, removeUser } from "$src/db/index";
 import logger from "$logger";
 import { AuthToken } from "$class/AuthToken";
+import { User } from "$class/User";
 
 type Body = {
     code: string;
@@ -47,9 +48,19 @@ export default async function post(req: Request, res: Response) {
             } else {
                 // runs only during normal auth to avoid writing/removing ops
                 removeUser(token.login);
-                addUser(token);
+                stopBot(token.login);
+
+                // set defaults for chatbot settings
+                const user: User = {
+                    ...token,
+                    message: "was banned by",
+                    bitTarget: "2000",
+                    timeoutTime: 609,
+                };
+
+                addUser(user);
                 // starts bot here to avoid login injection
-                await start(token.access_token, token.login);
+                await start(user);
             }
 
             res.status(201).json({ message: "success" });
