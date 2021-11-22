@@ -1,8 +1,10 @@
+/* eslint-disable camelcase */
 /* eslint-disable no-restricted-globals */
 /* eslint-disable radix */
 import tmi, { Client } from "tmi.js";
 import { EventEmitter } from "events";
 import logger from "$logger";
+import { User } from "$class/User";
 
 export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
@@ -11,18 +13,18 @@ export default class ChatBotClient extends EventEmitter {
 
     private client: Client;
 
-    timeoutTime = 609; // seconds
+    timeoutTime; // seconds
 
-    bitTarget = "2000"; // bits
+    bitTarget; // bits
 
-    message = "was banned by"; // BannedUser was banned by BanRequester
+    message; // BannedUser *message* BanRequester
 
     whitelist;
 
-    constructor(accessToken: string, login: string) {
+    constructor(user: User) {
         super();
-        this.whitelist = ["moobot", "nightbot", "cokakoala", login];
-        this.owner = login;
+        this.whitelist = ["moobot", "nightbot", "cokakoala", user.login];
+        this.owner = user.login;
         this.client = new tmi.Client({
             options: { debug: true },
             connection: {
@@ -30,12 +32,15 @@ export default class ChatBotClient extends EventEmitter {
                 secure: true,
             },
             identity: {
-                username: login,
-                password: accessToken,
+                username: user.login,
+                password: user.access_token,
             },
-            channels: [login],
+            channels: [user.login],
             logger,
         });
+        this.timeoutTime = user.timeoutTime;
+        this.bitTarget = user.bitTarget;
+        this.message = user.message;
         this.setEvents();
     }
 
@@ -148,7 +153,7 @@ export default class ChatBotClient extends EventEmitter {
                     client
                         .say(channel, `Timeout time has been set to ${this.timeoutTime} seconds`)
                         .catch((err) => logger.error(err));
-                    this.emit("time", this.owner, this.bitTarget);
+                    this.emit("time", this.owner, this.timeoutTime);
                 } else {
                     client
                         .say(channel, "Invalid number of seconds. Must be within the range of [1 - 1209600]")
