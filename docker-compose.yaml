@@ -1,13 +1,12 @@
 version: "3.0"
 services:
-    bits-for-ban-app:
+    b2b-app:
+        # restart: always
         build: .
         volumes:
-            - ./:/app
-            # - /app/node_modules
-            # I need to figure out why removing the top line fixes the nedb and mongodb crashes of missing packages
             - ./data:/app/data
         env_file:
             - ./.env
         ports:
             - "3000:3000"
+        command: ["node", "/app/src/app.js"]

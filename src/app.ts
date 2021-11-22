@@ -1,3 +1,4 @@
+import "module-alias/register";
 import express from "express";
 import logger from "$logger";
 import auth from "$src/api/oauth/auth/index";

@@ -17,6 +17,7 @@
     "dependencies": {
         "axios": "^0.24.0",
         "express": "^4.17.1",
+        "module-alias": "^2.2.2",
         "nedb": "^1.8.0",
         "tmi.js": "^1.8.5",
         "winston": "^3.3.3"
@@ -39,5 +40,10 @@
         "ts-node": "^10.4.0",
         "tsconfig-paths": "^3.12.0",
         "typescript": "^4.5.2"
+    },
+    "_moduleAliases": {
+        "$src": "src/",
+        "$class": "src/classes/",
+        "$logger": "src/logger/index"
     }
 }
