@@ -1,5 +1,6 @@
+import "module-alias/register";
 import express from "express";
-import logger from "$src/logger/index";
+import logger from "$logger";
 import auth from "$src/api/oauth/auth/index";
 import { getActiveClients } from "$src/chatbot/index";
 
