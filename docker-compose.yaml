@@ -1,7 +1,7 @@
 version: "3.0"
 services:
     b2b-app:
-        # restart: always
+        restart: always
         build: .
         volumes:
             - ./data:/app/data
