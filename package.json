@@ -9,7 +9,8 @@
         "build": "yarn clean && tsc -p . && yarn copy-files",
         "clean": "rm -rf ./dist",
         "copy-files": "cp -r ./src/pages/ ./dist/src",
-        "format": "prettier --config .prettierrc 'src/**/*.ts' --write"
+        "format": "prettier --config .prettierrc 'src/**/*.ts' --write",
+        "build:release": "rm -rf ./releases/src && yarn build && cp -r ./dist/src/ ./releases/src"
     },
     "author": "",
     "license": "GPL-3.0",
