@@ -32,7 +32,7 @@ window.onload = async () => {
     revoke.href = revokeUrl;
 
     try {
-        const resp = await fetch(`https://${baseUrl}/clients`);
+        const resp = await fetch(`${baseUrl}/clients`);
         const { activeClients } = await resp.json();
 
         const clients = document.getElementById("clients");
