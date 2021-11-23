@@ -56,18 +56,19 @@ To adjust the amount of time (unit is in seconds) that a user is timed out for, 
 The default timeout time is `609` seconds. The input range is from [1 - 1209600]. The max amount is Twitch's longest possible timeout time, which is 2 weeks.
 
 ## Installation
-#### IMPORTANT NOTE:
-This guide is organized into 3 sections. Below is the **Common Guide** section. This section is **REQUIRED** for both versions of the guide, whether you're running the application with Docker or not. The **Common Guide** must be completed before moving onto your desired method.
+#### NOTE:
+To follow this guide, first complete **Common Guide** section. Once done, you can move onto either the **Node** or **Docker** section, depending on which method you choose to run the application. Finally, the **Final Touches** section shows you how to connect your bot to your Twitch account. The total installation process should take less than 30 minutes to complete.
 
 ### Requirements:
 - [Twitch Dev Application](https://dev.twitch.tv/console/apps) - This is where you will acquire your API credentials after registration.
-- [Node.js](https://nodejs.org/) - Ignore if you're running the app in a docker container.
+- [Node.js v16](https://nodejs.org/) - Ignore if you're running the app in a docker container.
 - [Yarn](https://yarnpkg.com/) - Ignore if you're running the app in a docker container.
 - (Optional) [Docker & Docker-Compose](https://www.docker.com/)
 
 ### Common Guide:
 - Download the latest [RELEASE](https://github.com/AdrianGonz97/Bits2Ban-Twitch-Bot/releases).
 - Unzip the RELEASE folder.
+- Register a [Twitch Application](https://dev.twitch.tv/console/apps) to acquire your API credentials. You can temporarily add `http://localhost:3000` to OAuth Redirect URLs as a placeholder. Once registered, you will be able to access the Client ID and Client Secret.
 - Modify and populate the `.env-example` file. 
   - If you're running this locally, set `PORT` to `3000` and the `URI` to `http://localhost:3000`.
   - Populate the `CLIENT_ID` and `CLIENT_SECRET` fields with their respective Twitch API credentials that you can find on your [Twitch Dev Console](https://dev.twitch.tv/console/apps) for your registered application.
@@ -75,9 +76,9 @@ This guide is organized into 3 sections. Below is the **Common Guide** section. 
 - While you're on the [Twitch Dev Console](https://dev.twitch.tv/console/apps) for your registered application, add 2 **OAuth Redirect URLs**.
   - If you're running locally, add `http://localhost:3000/login` and `http://localhost:3000/revoke`.
   - Otherwise, add your URI with the endpoints `/login` and `/revoke` appended to the back. For example, `https://example.com/login` and `https://example.com/revoke`.
-- **This step is important** - Open the project folder and navigate to `src/pages/index.js` and open that file in a text editor.
+- **This step is important** - Open the unzipped folder and navigate to `src/pages/index.js` and open that file in a text editor.
   - In the text editor, look at line 3 where it says `const clientId = "REPLACE-ME";`. Replace the `REPLACE-ME` in that line with the same value as *YOUR* **CLIENT_ID** that you had set earlier.
-  - The result should like something like this `const clientId = "ndHag8QJdLhysoPqbLvNLBFvtATfNyZ2PMYoFn2k";`, but instead of my example of random characters, it should be the CLIENT_ID of your registered Twitch application (the very same you pasted in your `.env` file a few steps ago).
+  - The result should look similar to this `const clientId = "ndHag8QJdLhysoPqbLvNLBFvtATfNyZ2PMYoFn2k";`, but instead of my example of random characters, it should be the CLIENT_ID of your registered Twitch application (the very same you pasted in your `.env` file a few steps ago).
 
 ### Node:
 - Next, open a terminal and navigate back to the root directory of the project (this is the same directory where the `src` folder, `.env` file, and `Dockerfile` are located). 
@@ -89,7 +90,7 @@ This guide is organized into 3 sections. Below is the **Common Guide** section. 
 - Run the following command: `docker-compose build`
 - After the image has been built, you can start the docker container by running the following: `docker-compose up`
 
-### Final touches:
+### Final Touches:
 - Once the app is running, navigate to your URI (if you're running locally, go to `http://localhost:3000`). 
 - From there, you can sign in by clicking the `Connect` link on the page. 
 - Once connected, the bot should be up and running. From here, you can adjust the settings of the bot using commands (found in the above **USAGE** section) in twitch chat of the broadcaster.
