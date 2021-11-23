@@ -1,22 +1,16 @@
 window.onload = async () => {
     // needs to be changed to user specific twitch app
-    const clientId = "8nxu1pu09x07u2q5wufhx4qv7bmk30";
-    const baseUrl = window.location.hostname;
+    const clientId = "REPLACE-ME";
+    const baseUrl = window.location.origin;
     const state = generateState();
-    const scopes = [
-        "bits:read",
-        "user:read:email",
-        "channel:moderate",
-        "chat:read",
-        "chat:edit",
-    ];
+    const scopes = ["bits:read", "user:read:email", "channel:moderate", "chat:read", "chat:edit"];
 
     window.localStorage.setItem("state", state);
 
     const loginUrl =
         `https://id.twitch.tv/oauth2/authorize` +
         `?client_id=${clientId}` +
-        `&redirect_uri=https://${baseUrl}/login` +
+        `&redirect_uri=${baseUrl}/login` +
         `&response_type=code` +
         `&scope=${scopes.join("+")}` +
         `&force_verify=true` +
@@ -25,7 +19,7 @@ window.onload = async () => {
     const revokeUrl =
         `https://id.twitch.tv/oauth2/authorize` +
         `?client_id=${clientId}` +
-        `&redirect_uri=https://${baseUrl}/revoke` +
+        `&redirect_uri=${baseUrl}/revoke` +
         `&response_type=code` +
         `&scope=${scopes.join("+")}` +
         `&force_verify=true` +
@@ -56,8 +50,7 @@ window.onload = async () => {
 };
 
 function generateState() {
-    const validChars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const validChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
     let array = new Uint8Array(40);
 
