@@ -76,9 +76,6 @@ To follow this guide, first complete **Common Guide** section. Once done, you ca
 - While you're on the [Twitch Dev Console](https://dev.twitch.tv/console/apps) for your registered application, add 2 **OAuth Redirect URLs**.
   - If you're running locally, add `http://localhost:3000/login` and `http://localhost:3000/revoke`.
   - Otherwise, add your URI with the endpoints `/login` and `/revoke` appended to the back. For example, `https://example.com/login` and `https://example.com/revoke`.
-- **This step is important** - Open the unzipped folder and navigate to `src/pages/index.js` and open that file in a text editor.
-  - In the text editor, look at line 3 where it says `const clientId = "REPLACE-ME";`. Replace the `REPLACE-ME` in that line with the same value as *YOUR* **CLIENT_ID** that you had set earlier.
-  - The result should look similar to this `const clientId = "ndHag8QJdLhysoPqbLvNLBFvtATfNyZ2PMYoFn2k";`, but instead of my example of random characters, it should be the CLIENT_ID of your registered Twitch application (the very same you pasted in your `.env` file a few steps ago).
 
 ### Node:
 - Next, open a terminal and navigate back to the root directory of the project (this is the same directory where the `src` folder, `.env` file, and `Dockerfile` are located). 
