@@ -1,7 +1,27 @@
+/* eslint-disable no-use-before-define */
+/* eslint-disable no-restricted-syntax */
 window.onload = async () => {
-    // needs to be changed to user specific twitch app
-    const clientId = "REPLACE-ME";
     const baseUrl = window.location.origin;
+    let clientId;
+
+    try {
+        const resp = await fetch(`${baseUrl}/clients`);
+        const { activeClients, clientId: id } = await resp.json();
+        clientId = id;
+
+        const clients = document.getElementById("clients");
+        const title = document.getElementById("client-title");
+        title.innerText = `Active Clients: ${activeClients.length}`;
+
+        for (const client of activeClients) {
+            const p = document.createElement("p");
+            p.innerText = client;
+            clients.appendChild(p);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+
     const state = generateState();
     const scopes = ["bits:read", "user:read:email", "channel:moderate", "chat:read", "chat:edit"];
 
@@ -30,23 +50,6 @@ window.onload = async () => {
 
     login.href = loginUrl;
     revoke.href = revokeUrl;
-
-    try {
-        const resp = await fetch(`${baseUrl}/clients`);
-        const { activeClients } = await resp.json();
-
-        const clients = document.getElementById("clients");
-        const title = document.getElementById("client-title");
-        title.innerText = `Active Clients: ${activeClients.length}`;
-
-        for (const client of activeClients) {
-            const p = document.createElement("p");
-            p.innerText = client;
-            clients.appendChild(p);
-        }
-    } catch (err) {
-        console.error(err);
-    }
 };
 
 function generateState() {

@@ -20,5 +20,5 @@ export async function stopBot(login: string) {
 
 export function getActiveClients(req: Request, res: Response) {
     const activeClients = [...ChatBotClient.clients.keys()];
-    res.status(200).json({ activeClients });
+    res.status(200).json({ activeClients, clientId: process.env.CLIENT_ID });
 }
