@@ -58,12 +58,10 @@ export default class ChatBotClient extends EventEmitter {
             logger.info(`[CHEER] [${channel}] <${banRequester}>: ${message}`);
             // anyone on the whitelist can cheer at any amount to timeout someone
             if (userstate.bits === this.bitTarget || this.whitelist.includes(banRequester)) {
-                // removes all "cheer####" from string
-                const regex = /([^ "]*CHEER[^ "]*)/g;
-                const parsedMsg = message.toUpperCase().replace(regex, "").toLowerCase();
+                const parsedMsg = message.toLowerCase();
                 const words = parsedMsg.split(" ");
                 const found = words.find(
-                    // shortest possible username is 3 chars
+                    // shortest possible username is 4 chars
                     (el) => el[0] === "@" && el.length > 4
                 );
                 if (found) {
