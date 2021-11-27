@@ -1,9 +1,10 @@
 # Bits2Ban-Twitch-Bot
 ## About
-The Bits2Ban Twitch Bot is a fun, interactive bot that [Twitch](https://www.twitch.tv/) broadcasters can add to their channel to increase chat chaos. The main purpose of this bot is to allow viewers to ban **anyone** they want, including moderators, in exchange for a specified amount of bits. Once a ban request is triggered, the bot will then send a message in chat, asking the soon-to-be banned viewer if they have any final words. After their time runs out, the viewer is then timed out for a given amount of time, specified by the broadcaster.
+The Bits2Ban Twitch Bot is a fun, interactive bot that [Twitch](https://www.twitch.tv/) broadcasters can add to their channel to increase chat chaos. The main purpose of this bot is to allow viewers to ban **anyone** they want, including moderators, in exchange for a specified amount of bits. Once a ban request is triggered, the bot will then send a message in chat, asking the soon-to-be banned viewer if they have any final words. During their final words, users will be able to avoid their ban by cheering the target amount of bits, handing the ban right back to the user that gave it to them. After their time runs out, the viewer is then timed out for a given amount of time, specified by the broadcaster.
 
 ### Features
 - Viewers are able to ban each other for a set amount of time for a given amount of bits.
+- Viewers can counter ban the original ban requester that tried to ban them by cheering the target amount of bits before the 25 second timeout delay runs out.
 - Moderators can also be banned. Once their timeout has expired, their moderator role will automatically be granted back to them.
 - Settings are customizable with commands from the broadcaster's chat. Broadcasters can adjust the amount of time a user is banned for, the amount of bits required to trigger a ban, and the timeout message that is sent when a user is banned.
 
@@ -20,6 +21,9 @@ As you can see, it does not matter where the user has been tagged in the message
 - The total amount of bits redeemed is exact to the amount required
 
 If multiple users were tagged in the same message, the ban will be issued to the user that was tagged first.
+
+### Avoiding a Ban (Counter Banning)
+A user can avoid being banned by **CHEER**ing the exact amount of bits that was set by the broadcaster during the "final words" stage. If a user **CHEERS** in time, the original ban requester will now be the one that is set to be banned. They will have an oppurtunity to counter ban the original counter ban, and can theoretically result in an infinite loop of two users going back and forth to avoid being banned. Excellent.
 
 ## Commands to Adjust Settings:
 #### IMPORTANT NOTE:
