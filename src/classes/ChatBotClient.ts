@@ -189,7 +189,8 @@ export default class ChatBotClient extends EventEmitter {
             // get list of mods for channel
             const mods = await this.client.mods(channel);
             // if uno reverse card type
-            if (isUno) await this.client.say(channel, `@${userToBan} UNO REVERSE CARD, any final words?`);
+            if (isUno)
+                await this.client.say(channel, `${count + 1}x UNO REVERSE CARD, any final words, @${userToBan}?`);
             else await this.client.say(channel, `@${userToBan} do you have any final words?`);
             const newBanRequest: BanRequest = {
                 userToBan,
