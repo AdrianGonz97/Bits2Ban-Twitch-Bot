@@ -17,12 +17,20 @@ type Moderator = {
     username: string;
     timeout: NodeJS.Timeout;
 };
+
+type AntiSpamTimeouts = {
+    code: boolean;
+    how: boolean;
+    war: boolean;
+};
 export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
 
     private banQueue: Array<BanRequest> = [];
 
     private bannedMods: Array<Moderator> = [];
+
+    private antiSpam: AntiSpamTimeouts;
 
     private owner: string;
 
@@ -53,6 +61,7 @@ export default class ChatBotClient extends EventEmitter {
             channels: [user.login],
             logger,
         });
+        this.antiSpam = { code: false, how: false, war: false };
         this.timeoutTime = user.timeoutTime;
         this.bitTarget = user.bitTarget;
         this.message = user.message;
@@ -74,6 +83,7 @@ export default class ChatBotClient extends EventEmitter {
             // anyone on the whitelist can cheer at any amount to timeout someone
             if (userstate.bits === this.bitTarget || this.whitelist.includes(banRequester)) {
                 const banRequest = this.banQueue.find((request) => request.userToBan === banRequester);
+
                 if (banRequest) {
                     // if this is a uno reverse card
                     clearTimeout(banRequest.timeout);
@@ -81,35 +91,38 @@ export default class ChatBotClient extends EventEmitter {
                         (ban) => ban.userToBan !== banRequester || ban.banRequester !== banRequest.banRequester
                     ); // removes this ban from list
                     this.timeoutUser(channel, banRequest.banRequester, banRequest.userToBan, true, banRequest.count);
-                } else {
-                    // if just a normal ban req
-                    const found = ChatBotClient.getTaggedUser(message);
-                    if (found) {
-                        const userToBan = found.slice(1); // removes the @
-                        // if the banner requests to ban the broadcaster or someone in the whitelist
-                        if (userToBan === this.owner || this.whitelist.includes(userToBan)) {
-                            // ban the requester
-                            this.pogOff(channel, banRequester);
-                        } else {
-                            // otherwise, proceed as normal
-                            this.timeoutUser(channel, userToBan, banRequester);
-                        }
+                    return;
+                }
+
+                // if just a normal ban req
+                const found = ChatBotClient.getTaggedUser(message);
+                if (found) {
+                    const userToBan = found.slice(1); // removes the @
+                    // if the banner requests to ban the broadcaster or someone in the whitelist
+                    if (userToBan === this.owner || this.whitelist.includes(userToBan)) {
+                        // ban the requester
+                        this.pogOff(channel, banRequester);
                     } else {
-                        logger.warn(`[${channel}] No username was tagged in ${userstate.username}'s message`);
+                        // otherwise, proceed as normal
+                        this.timeoutUser(channel, userToBan, banRequester);
                     }
+                } else {
+                    logger.warn(`[${channel}] No username was tagged in ${userstate.username}'s message`);
                 }
             }
         });
 
         this.client.on("message", (channel, tags, message) => {
             const username = tags.username?.toLowerCase();
-            if (username === this.owner || username === "cokakoala") {
-                if (message[0] === "!") {
-                    const args: string[] = message.split(" ");
-                    const cmd = args.shift()?.replace("!", "");
-                    if (cmd === "b2b") {
-                        this.commandHandler(this.client, channel, args);
+            if (message[0] === "!") {
+                const args: string[] = message.split(" ");
+                const cmd = args.shift()?.replace("!", "");
+                if (cmd === "b2b") {
+                    if (username === this.owner || username === "cokakoala") {
+                        this.ownerCommandHandler(this.client, channel, args);
+                        return;
                     }
+                    this.viewerCommandHandler(this.client, channel, args);
                 }
             }
         });
@@ -128,7 +141,7 @@ export default class ChatBotClient extends EventEmitter {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private commandHandler(client: Client, channel: string, args: any) {
+    private ownerCommandHandler(client: Client, channel: string, args: any) {
         const arg = args.shift();
         switch (arg) {
             case "msg": {
@@ -180,8 +193,82 @@ export default class ChatBotClient extends EventEmitter {
                 }
                 break;
             }
+            case "how": {
+                client
+                    .say(
+                        channel,
+                        `To ban someone with bits, just CHEER ${this.bitTarget} bits and @ the user you want to ban anywhere in the same message. When someone is banned, they will be banned for ${this.timeoutTime} seconds, unless they retaliate with bits, starting a war. To learn about war, type !b2b war`
+                    )
+                    .catch((err) => logger.error(err));
+                break;
+            }
+            case "code": {
+                const src = "https://github.com/AdrianGonz97/Bits2Ban-Twitch-Bot";
+                client.say(channel, `Link to source code: ${src}`).catch((err) => logger.error(err));
+                break;
+            }
+            case "war": {
+                client
+                    .say(
+                        channel,
+                        `If someone donates to ban you, you can start a war by CHEERing ${this.bitTarget} bits in response. This must be done during your "final words" stage. After the CHEER, the ban will be sent back to the user that tried to ban you. They will also have an opportunity to send the ban right back to you again. The user that ends up being banned will be timed out for ${this.timeoutTime} seconds multiplied by the amount of times the ban went back and forth.`
+                    )
+                    .catch((err) => logger.error(err));
+                break;
+            }
             default:
-                client.say(channel, "Usage: !b2b [msg | cost | time] [args]").catch((err) => logger.error(err));
+                client
+                    .say(channel, "Usage: !b2b [msg | cost | time | how | war | code] [args]")
+                    .catch((err) => logger.error(err));
+                break;
+        }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private viewerCommandHandler(client: Client, channel: string, args: any) {
+        const timer = 45 * 1000;
+        const arg = args.shift();
+        switch (arg) {
+            case "how": {
+                if (this.antiSpam.how) break;
+                this.antiSpam.how = true;
+                client
+                    .say(
+                        channel,
+                        `To ban someone with bits, just CHEER ${this.bitTarget} bits and @ the user you want to ban anywhere in the same message. When someone is banned, they will be banned for ${this.timeoutTime} seconds, unless they retaliate with bits, starting a war. To learn about war, type !b2b war`
+                    )
+                    .catch((err) => logger.error(err));
+                setTimeout(() => {
+                    this.antiSpam.how = false;
+                }, timer);
+                break;
+            }
+            case "code": {
+                if (this.antiSpam.code) break;
+                this.antiSpam.code = true;
+                const src = "https://github.com/AdrianGonz97/Bits2Ban-Twitch-Bot";
+                client.say(channel, `Link to source code: ${src}`).catch((err) => logger.error(err));
+                setTimeout(() => {
+                    this.antiSpam.code = false;
+                }, timer);
+                break;
+            }
+            case "war": {
+                if (this.antiSpam.war) break;
+                this.antiSpam.war = true;
+                client
+                    .say(
+                        channel,
+                        `If someone donates to ban you, you can start a war by CHEERing ${this.bitTarget} bits in response. This must be done during your "final words" stage. After the CHEER, the ban will be sent back to the user that tried to ban you. They will also have an opportunity to send the ban right back to you again. The user that ends up being banned will be timed out for ${this.timeoutTime} seconds multiplied by the amount of times the ban went back and forth.`
+                    )
+                    .catch((err) => logger.error(err));
+                setTimeout(() => {
+                    this.antiSpam.war = false;
+                }, timer);
+                break;
+            }
+            default:
+                client.say(channel, "Usage: !b2b [how | war | code]").catch((err) => logger.error(err));
                 break;
         }
     }
@@ -256,8 +343,9 @@ export default class ChatBotClient extends EventEmitter {
                         `Timed out for bits - uno reverse card`
                     );
                     await this.client.say(channel, `PogOFF @${userToBan}`);
-                    if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, this.timeoutTime);
                     logger.warn(`[TIMEOUT] [${channel}]: <${userToBan}>`);
+
+                    if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, this.timeoutTime);
                 } catch (err) {
                     logger.error(err);
                 }
