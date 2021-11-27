@@ -10,6 +10,7 @@ type BanRequest = {
     userToBan: string;
     banRequester: string;
     timeout: NodeJS.Timeout;
+    count: number;
 };
 export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
@@ -72,7 +73,7 @@ export default class ChatBotClient extends EventEmitter {
                     this.banQueue = this.banQueue.filter(
                         (ban) => ban.userToBan !== banRequester || ban.banRequester !== banRequest.banRequester
                     ); // removes this ban from list
-                    this.timeoutUser(channel, banRequest.banRequester, banRequest.userToBan, true);
+                    this.timeoutUser(channel, banRequest.banRequester, banRequest.userToBan, true, banRequest.count);
                 } else {
                     // if just a normal ban req
                     const parsedMsg = message.toLowerCase();
@@ -183,7 +184,7 @@ export default class ChatBotClient extends EventEmitter {
         }
     }
 
-    private async timeoutUser(channel: string, userToBan: string, banRequester: string, isUno = false) {
+    private async timeoutUser(channel: string, userToBan: string, banRequester: string, isUno = false, count = 0) {
         try {
             // get list of mods for channel
             const mods = await this.client.mods(channel);
@@ -193,16 +194,18 @@ export default class ChatBotClient extends EventEmitter {
             const newBanRequest: BanRequest = {
                 userToBan,
                 banRequester,
+                count: count + 1,
                 timeout: setTimeout(async () => {
                     try {
                         await this.client.timeout(
                             channel,
                             userToBan,
-                            this.timeoutTime,
+                            Math.min(this.timeoutTime * (count + 1), 1209600), // need to
                             `Timed out for bits - requested by ${banRequester}`
                         );
                         await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
-                        if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan);
+                        if (mods.includes(userToBan))
+                            this.remodAfterBan(channel, userToBan, Math.min(this.timeoutTime * (count + 1), 1209600));
                         logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
                         // remove the ban from the list after timeout
                         this.banQueue = this.banQueue.filter(
@@ -233,7 +236,7 @@ export default class ChatBotClient extends EventEmitter {
                         `Timed out for bits - uno reverse card`
                     );
                     await this.client.say(channel, `PogOFF @${userToBan}`);
-                    if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan);
+                    if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, this.timeoutTime);
                     logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
                 } catch (err) {
                     logger.error(err);
@@ -245,7 +248,7 @@ export default class ChatBotClient extends EventEmitter {
     }
 
     /* if a mod was timedout, remod the user after the timeout ends */
-    private remodAfterBan(channel: string, username: string) {
+    private remodAfterBan(channel: string, username: string, time: number) {
         setTimeout(
             (client: tmi.Client, chan, name) => {
                 client
@@ -253,7 +256,7 @@ export default class ChatBotClient extends EventEmitter {
                     .then(() => logger.warn(`[MODDED] [${chan}]: <${name}>`))
                     .catch((err) => logger.error(err));
             },
-            this.timeoutTime * 1000 + 10000, // 10 sec buffer
+            time * 1000 + 10000, // 10 sec buffer
             this.client,
             channel,
             username
