@@ -200,7 +200,7 @@ export default class ChatBotClient extends EventEmitter {
                         await this.client.timeout(
                             channel,
                             userToBan,
-                            Math.min(this.timeoutTime * (count + 1), 1209600), // need to
+                            Math.min(this.timeoutTime * (count + 1), 1209600), // need to cap timeout at 2 weeks
                             `Timed out for bits - requested by ${banRequester}`
                         );
                         await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
