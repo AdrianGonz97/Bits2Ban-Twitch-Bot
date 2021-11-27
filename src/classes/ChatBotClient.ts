@@ -188,9 +188,13 @@ export default class ChatBotClient extends EventEmitter {
         try {
             // get list of mods for channel
             const mods = await this.client.mods(channel);
+            const time = Math.min(this.timeoutTime * (count + 1), 1209600);
             // if uno reverse card type
             if (isUno)
-                await this.client.say(channel, `${count + 1}x UNO REVERSE CARD, any final words, @${userToBan}?`);
+                await this.client.say(
+                    channel,
+                    `${count + 1}x UNO REVERSE CARD for ${time} seconds, any final words, @${userToBan}?`
+                );
             else await this.client.say(channel, `@${userToBan} do you have any final words?`);
             const newBanRequest: BanRequest = {
                 userToBan,
@@ -201,12 +205,11 @@ export default class ChatBotClient extends EventEmitter {
                         await this.client.timeout(
                             channel,
                             userToBan,
-                            Math.min(this.timeoutTime * (count + 1), 1209600), // need to cap timeout at 2 weeks
+                            time, // need to cap timeout at 2 weeks
                             `Timed out for bits - requested by ${banRequester}`
                         );
                         await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
-                        if (mods.includes(userToBan))
-                            this.remodAfterBan(channel, userToBan, Math.min(this.timeoutTime * (count + 1), 1209600));
+                        if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
                         logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
                         // remove the ban from the list after timeout
                         this.banQueue = this.banQueue.filter(
