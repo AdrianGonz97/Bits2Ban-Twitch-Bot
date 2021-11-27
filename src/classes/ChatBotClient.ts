@@ -1,7 +1,6 @@
 /* eslint-disable camelcase */
 /* eslint-disable no-restricted-globals */
 /* eslint-disable radix */
-// TODO: Mods can lose their mod permanently if they are banned again while they are already banned.
 import tmi, { Client } from "tmi.js";
 import { EventEmitter } from "events";
 import logger from "$logger";
@@ -13,10 +12,17 @@ type BanRequest = {
     timeout: NodeJS.Timeout;
     count: number;
 };
+
+type Moderator = {
+    username: string;
+    timeout: NodeJS.Timeout;
+};
 export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
 
     private banQueue: Array<BanRequest> = [];
+
+    private bannedMods: Array<Moderator> = [];
 
     private owner: string;
 
@@ -77,7 +83,7 @@ export default class ChatBotClient extends EventEmitter {
                     this.timeoutUser(channel, banRequest.banRequester, banRequest.userToBan, true, banRequest.count);
                 } else {
                     // if just a normal ban req
-                    const found = ChatBotClient.parseUserToBan(message);
+                    const found = ChatBotClient.getTaggedUser(message);
                     if (found) {
                         const userToBan = found.slice(1); // removes the @
                         // if the banner requests to ban the broadcaster or someone in the whitelist
@@ -184,6 +190,7 @@ export default class ChatBotClient extends EventEmitter {
         try {
             // get list of mods for channel
             const mods = await this.client.mods(channel);
+            const isBannedAlreadyMod = this.bannedMods.some((mod) => mod.username === userToBan);
             const time = Math.min(this.timeoutTime * (count + 1), 1209600);
             // if uno reverse card type
             if (isUno)
@@ -206,7 +213,13 @@ export default class ChatBotClient extends EventEmitter {
                                 `Timed out for bits - requested by ${banRequester}`
                             );
                             await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
-                            if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
+
+                            // if a mod was banned..
+                            if (isBannedAlreadyMod) {
+                                this.bannedMods = this.bannedMods.filter((mod) => mod.username !== userToBan);
+                                this.remodAfterBan(channel, userToBan, time);
+                            } else if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
+
                             logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
                             // remove the ban from the list after timeout
                             this.banQueue = this.banQueue.filter(
@@ -225,6 +238,7 @@ export default class ChatBotClient extends EventEmitter {
         }
     }
 
+    /* for when a whitelisted user is attempted to be banned */
     private async pogOff(channel: string, userToBan: string) {
         try {
             // get list of mods for channel
@@ -252,21 +266,28 @@ export default class ChatBotClient extends EventEmitter {
 
     /* if a mod was timedout, remod the user after the timeout ends */
     private remodAfterBan(channel: string, username: string, time: number) {
-        setTimeout(
-            (client: tmi.Client, chan, name) => {
-                client
-                    .mod(chan, name)
-                    .then(() => logger.warn(`[MODDED] [${chan}]: <${name}>`))
-                    .catch((err) => logger.error(err));
-            },
-            time * 1000 + 10000, // 10 sec buffer
-            this.client,
-            channel,
-            username
-        );
+        const newBannedMod: Moderator = {
+            username,
+            timeout: setTimeout(
+                (client: tmi.Client, chan, name) => {
+                    client
+                        .mod(chan, name)
+                        .then(() => logger.warn(`[MODDED] [${chan}]: <${name}>`))
+                        .catch((err) => logger.error(err));
+                    // remove remodded mod from banned list
+                    this.bannedMods = this.bannedMods.filter((mod) => mod.username !== name);
+                },
+                time * 1000 + 10000, // 10 sec buffer
+                this.client,
+                channel,
+                username
+            ),
+        };
+        this.bannedMods.push(newBannedMod);
     }
 
-    private static parseUserToBan(message: string): string {
+    /* parses the message to extract the tagged user */
+    private static getTaggedUser(message: string): string {
         const parsedMsg = message.toLowerCase();
         const words = parsedMsg.split(" ");
         const found = words.find(
