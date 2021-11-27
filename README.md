@@ -4,7 +4,7 @@ The Bits2Ban Twitch Bot is a fun, interactive bot that [Twitch](https://www.twit
 
 ### Features
 - Viewers are able to ban each other for a set amount of time for a given amount of bits.
-- Viewers can counter ban the original ban requester that tried to ban them by cheering the target amount of bits before the 25 second timeout delay runs out.
+- Viewers can avoid being banned by cheering the target amount of bits before the 25 second timeout delay runs out. If done, the ban is handed right back to the user that first requested the ban. Both users will have an opportunity to counter ban each other over and over again.
 - Moderators can also be banned. Once their timeout has expired, their moderator role will automatically be granted back to them.
 - Settings are customizable with commands from the broadcaster's chat. Broadcasters can adjust the amount of time a user is banned for, the amount of bits required to trigger a ban, and the timeout message that is sent when a user is banned.
 
