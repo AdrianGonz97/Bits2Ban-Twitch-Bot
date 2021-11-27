@@ -6,8 +6,15 @@ import { EventEmitter } from "events";
 import logger from "$logger";
 import { User } from "$class/User";
 
+type BanRequest = {
+    userToBan: string;
+    banRequester: string;
+    timeout: NodeJS.Timeout;
+};
 export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
+
+    private banQueue: Array<BanRequest> = [];
 
     private owner: string;
 
@@ -58,26 +65,34 @@ export default class ChatBotClient extends EventEmitter {
             logger.info(`[CHEER] [${channel}] <${banRequester}>: ${message}`);
             // anyone on the whitelist can cheer at any amount to timeout someone
             if (userstate.bits === this.bitTarget || this.whitelist.includes(banRequester)) {
-                // removes all "cheer####" from string
-                const regex = /([^ "]*CHEER[^ "]*)/g;
-                const parsedMsg = message.toUpperCase().replace(regex, "").toLowerCase();
-                const words = parsedMsg.split(" ");
-                const found = words.find(
-                    // shortest possible username is 3 chars
-                    (el) => el[0] === "@" && el.length > 4
-                );
-                if (found) {
-                    const userToBan = found.slice(1); // removes the @
-                    // if the banner requests to ban the broadcaster or someone in the whitelist
-                    if (userToBan === this.owner || this.whitelist.includes(userToBan)) {
-                        // ban the requester
-                        this.pogOff(channel, banRequester);
-                    } else {
-                        // otherwise, proceed as normal
-                        this.timeoutUser(channel, userToBan, banRequester);
-                    }
+                const banIndex = this.banQueue.findIndex((request) => request.userToBan === banRequester);
+                if (banIndex !== -1) {
+                    // if this is a uno reverse card
+                    const banRequest = this.banQueue[banIndex];
+                    clearTimeout(banRequest.timeout);
+                    this.banQueue = this.banQueue.filter((ban, index) => index !== banIndex); // removes this ban from list
+                    this.timeoutUser(channel, banRequest.banRequester, banRequest.userToBan, true);
                 } else {
-                    logger.warn(`[${channel}] No username was tagged in ${userstate.username}'s message`);
+                    // if just a normal ban req
+                    const parsedMsg = message.toLowerCase();
+                    const words = parsedMsg.split(" ");
+                    const found = words.find(
+                        // shortest possible username is 4 chars
+                        (el) => el[0] === "@" && el.length > 4
+                    );
+                    if (found) {
+                        const userToBan = found.slice(1); // removes the @
+                        // if the banner requests to ban the broadcaster or someone in the whitelist
+                        if (userToBan === this.owner || this.whitelist.includes(userToBan)) {
+                            // ban the requester
+                            this.pogOff(channel, banRequester);
+                        } else {
+                            // otherwise, proceed as normal
+                            this.timeoutUser(channel, userToBan, banRequester);
+                        }
+                    } else {
+                        logger.warn(`[${channel}] No username was tagged in ${userstate.username}'s message`);
+                    }
                 }
             }
         });
@@ -167,26 +182,37 @@ export default class ChatBotClient extends EventEmitter {
         }
     }
 
-    private async timeoutUser(channel: string, userToBan: string, banRequester: string) {
+    private async timeoutUser(channel: string, userToBan: string, banRequester: string, isUno = false) {
         try {
             // get list of mods for channel
             const mods = await this.client.mods(channel);
-            await this.client.say(channel, `@${userToBan} do you have any final words?`);
-            setTimeout(async () => {
-                try {
-                    await this.client.timeout(
-                        channel,
-                        userToBan,
-                        this.timeoutTime,
-                        `Timed out for bits - requested by ${banRequester}`
-                    );
-                    await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
-                    if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan);
-                    logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
-                } catch (err) {
-                    logger.error(err);
-                }
-            }, 15000);
+            // if uno reverse card type
+            if (isUno) await this.client.say(channel, `@${userToBan} UNO REVERSE CARD, any final words?`);
+            else await this.client.say(channel, `@${userToBan} do you have any final words?`);
+            const newBanRequest: BanRequest = {
+                userToBan,
+                banRequester,
+                timeout: setTimeout(async () => {
+                    try {
+                        await this.client.timeout(
+                            channel,
+                            userToBan,
+                            this.timeoutTime,
+                            `Timed out for bits - requested by ${banRequester}`
+                        );
+                        await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
+                        if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan);
+                        logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
+                        // remove the ban from the list after timeout
+                        this.banQueue = this.banQueue.filter(
+                            (ban) => ban.banRequester === banRequester && ban.userToBan === userToBan
+                        );
+                    } catch (err) {
+                        logger.error(err);
+                    }
+                }, 25000),
+            };
+            this.banQueue.push(newBanRequest);
         } catch (err) {
             logger.error(err);
         }
