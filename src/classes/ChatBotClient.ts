@@ -191,7 +191,7 @@ export default class ChatBotClient extends EventEmitter {
             // get list of mods for channel
             const mods = await this.client.mods(channel);
             const isBannedAlreadyMod = this.bannedMods.some((mod) => mod.username === userToBan);
-            const time = Math.min(this.timeoutTime * (count + 1), 1209600);
+            const time = Math.min(this.timeoutTime * (count + 1), 1209600); // need to cap timeout at 2 weeks
             // if uno reverse card type
             if (isUno)
                 await this.client.say(
@@ -199,38 +199,41 @@ export default class ChatBotClient extends EventEmitter {
                     `${count + 1}x UNO REVERSE CARD for ${time} seconds, any final words, @${userToBan}?`
                 );
             else await this.client.say(channel, `@${userToBan} do you have any final words?`);
+
+            const timeout = setTimeout(
+                async () => {
+                    try {
+                        await this.client.timeout(
+                            channel,
+                            userToBan,
+                            time,
+                            `Timed out for bits - requested by ${banRequester}`
+                        );
+                        await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
+                        logger.warn(`[TIMEOUT] [${channel}]: <${userToBan}>`);
+
+                        // if a mod was banned..
+                        if (isBannedAlreadyMod) {
+                            this.bannedMods = this.bannedMods.filter((mod) => mod.username !== userToBan);
+                            this.remodAfterBan(channel, userToBan, time);
+                        } else if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
+
+                        // remove the ban from the list after timeout
+                        this.banQueue = this.banQueue.filter(
+                            (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
+                        );
+                    } catch (err) {
+                        logger.error(err);
+                    }
+                },
+                isUno ? 60000 : 25000
+            );
+
             const newBanRequest: BanRequest = {
                 userToBan,
                 banRequester,
                 count: count + 1,
-                timeout: setTimeout(
-                    async () => {
-                        try {
-                            await this.client.timeout(
-                                channel,
-                                userToBan,
-                                time, // need to cap timeout at 2 weeks
-                                `Timed out for bits - requested by ${banRequester}`
-                            );
-                            await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
-
-                            // if a mod was banned..
-                            if (isBannedAlreadyMod) {
-                                this.bannedMods = this.bannedMods.filter((mod) => mod.username !== userToBan);
-                                this.remodAfterBan(channel, userToBan, time);
-                            } else if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
-
-                            logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
-                            // remove the ban from the list after timeout
-                            this.banQueue = this.banQueue.filter(
-                                (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
-                            );
-                        } catch (err) {
-                            logger.error(err);
-                        }
-                    },
-                    isUno ? 60000 : 25000
-                ),
+                timeout,
             };
             this.banQueue.push(newBanRequest);
         } catch (err) {
@@ -254,7 +257,7 @@ export default class ChatBotClient extends EventEmitter {
                     );
                     await this.client.say(channel, `PogOFF @${userToBan}`);
                     if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, this.timeoutTime);
-                    logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
+                    logger.warn(`[TIMEOUT] [${channel}]: <${userToBan}>`);
                 } catch (err) {
                     logger.error(err);
                 }
@@ -287,13 +290,10 @@ export default class ChatBotClient extends EventEmitter {
     }
 
     /* parses the message to extract the tagged user */
-    private static getTaggedUser(message: string): string {
-        const parsedMsg = message.toLowerCase();
-        const words = parsedMsg.split(" ");
-        const found = words.find(
-            // shortest possible username is 4 chars
-            (el) => el[0] === "@" && el.length > 4
-        );
-        return found ?? "";
+    private static getTaggedUser(message: string) {
+        const usernameRegex = /@\w*/g;
+        const taggedUsers = message.match(usernameRegex);
+        const found = taggedUsers?.find((el) => el.length > 4); // shortest username is 4 chars
+        return found?.toLowerCase() ?? "";
     }
 }
