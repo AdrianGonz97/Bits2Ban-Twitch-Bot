@@ -25,6 +25,8 @@ If multiple users were tagged in the same message, the ban will be issued to the
 ### Avoiding a Ban (Counter Banning)
 A user can avoid being banned by **CHEER**ing the exact amount of bits that was set by the broadcaster during the "final words" stage. If a user **CHEERS** in time, the original ban requester will now be the one that is set to be banned. They will have an oppurtunity to counter ban the original counter ban, and can theoretically result in an infinite loop of two users going back and forth to avoid being banned. Excellent.
 
+With each subsequent counter ban, the timeout time multiplies by the amount of back and forth occurs. For example, if the timeout time is set to 100 seconds, and the two users ping pong the counter ban 5 times, the user that receives the ban will be timed out for 500 seconds.
+
 ## Commands to Adjust Settings:
 #### IMPORTANT NOTE:
 Only the broadcaster that has signed into the app can use these commands to adjust their settings. If you have not modified the source code at all, my personal twitch account also has access to adjust these settings.
