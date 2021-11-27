@@ -65,12 +65,13 @@ export default class ChatBotClient extends EventEmitter {
             logger.info(`[CHEER] [${channel}] <${banRequester}>: ${message}`);
             // anyone on the whitelist can cheer at any amount to timeout someone
             if (userstate.bits === this.bitTarget || this.whitelist.includes(banRequester)) {
-                const banIndex = this.banQueue.findIndex((request) => request.userToBan === banRequester);
-                if (banIndex !== -1) {
+                const banRequest = this.banQueue.find((request) => request.userToBan === banRequester);
+                if (banRequest) {
                     // if this is a uno reverse card
-                    const banRequest = this.banQueue[banIndex];
                     clearTimeout(banRequest.timeout);
-                    this.banQueue = this.banQueue.filter((ban, index) => index !== banIndex); // removes this ban from list
+                    this.banQueue = this.banQueue.filter(
+                        (ban) => ban.userToBan !== banRequester || ban.banRequester !== banRequest.banRequester
+                    ); // removes this ban from list
                     this.timeoutUser(channel, banRequest.banRequester, banRequest.userToBan, true);
                 } else {
                     // if just a normal ban req
@@ -205,7 +206,7 @@ export default class ChatBotClient extends EventEmitter {
                         logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
                         // remove the ban from the list after timeout
                         this.banQueue = this.banQueue.filter(
-                            (ban) => ban.banRequester === banRequester && ban.userToBan === userToBan
+                            (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
                         );
                     } catch (err) {
                         logger.error(err);
