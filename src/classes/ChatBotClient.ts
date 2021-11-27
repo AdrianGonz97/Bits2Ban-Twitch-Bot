@@ -1,6 +1,7 @@
 /* eslint-disable camelcase */
 /* eslint-disable no-restricted-globals */
 /* eslint-disable radix */
+// TODO: Mods can lose their mod permanently if they are banned again while they are already banned.
 import tmi, { Client } from "tmi.js";
 import { EventEmitter } from "events";
 import logger from "$logger";
@@ -76,12 +77,7 @@ export default class ChatBotClient extends EventEmitter {
                     this.timeoutUser(channel, banRequest.banRequester, banRequest.userToBan, true, banRequest.count);
                 } else {
                     // if just a normal ban req
-                    const parsedMsg = message.toLowerCase();
-                    const words = parsedMsg.split(" ");
-                    const found = words.find(
-                        // shortest possible username is 4 chars
-                        (el) => el[0] === "@" && el.length > 4
-                    );
+                    const found = ChatBotClient.parseUserToBan(message);
                     if (found) {
                         const userToBan = found.slice(1); // removes the @
                         // if the banner requests to ban the broadcaster or someone in the whitelist
@@ -200,25 +196,28 @@ export default class ChatBotClient extends EventEmitter {
                 userToBan,
                 banRequester,
                 count: count + 1,
-                timeout: setTimeout(async () => {
-                    try {
-                        await this.client.timeout(
-                            channel,
-                            userToBan,
-                            time, // need to cap timeout at 2 weeks
-                            `Timed out for bits - requested by ${banRequester}`
-                        );
-                        await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
-                        if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
-                        logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
-                        // remove the ban from the list after timeout
-                        this.banQueue = this.banQueue.filter(
-                            (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
-                        );
-                    } catch (err) {
-                        logger.error(err);
-                    }
-                }, 25000),
+                timeout: setTimeout(
+                    async () => {
+                        try {
+                            await this.client.timeout(
+                                channel,
+                                userToBan,
+                                time, // need to cap timeout at 2 weeks
+                                `Timed out for bits - requested by ${banRequester}`
+                            );
+                            await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
+                            if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
+                            logger.info(`[TIMEOUT] [${channel}]: <${userToBan}>`);
+                            // remove the ban from the list after timeout
+                            this.banQueue = this.banQueue.filter(
+                                (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
+                            );
+                        } catch (err) {
+                            logger.error(err);
+                        }
+                    },
+                    isUno ? 60000 : 25000
+                ),
             };
             this.banQueue.push(newBanRequest);
         } catch (err) {
@@ -265,5 +264,15 @@ export default class ChatBotClient extends EventEmitter {
             channel,
             username
         );
+    }
+
+    private static parseUserToBan(message: string): string {
+        const parsedMsg = message.toLowerCase();
+        const words = parsedMsg.split(" ");
+        const found = words.find(
+            // shortest possible username is 4 chars
+            (el) => el[0] === "@" && el.length > 4
+        );
+        return found ?? "";
     }
 }
