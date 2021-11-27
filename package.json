@@ -1,6 +1,6 @@
 {
     "name": "bits2ban-twitch-bot",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "description": "",
     "main": "app.js",
     "scripts": {
