@@ -10,7 +10,7 @@
         "clean": "rm -rf ./dist",
         "copy-files": "cp -r ./src/pages/ ./dist/src",
         "format": "prettier --config .prettierrc 'src/**/*.ts' --write",
-        "build:release": "rm -rf ./releases/src && yarn build && cp -r ./dist/src/ ./releases/src"
+        "build:release": "rm -rf ./releases/src && yarn build && cp -r ./dist/src/ ./releases/src && zip -r release.zip ./releases"
     },
     "author": "",
     "license": "GPL-3.0",
