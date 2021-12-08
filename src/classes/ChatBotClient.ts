@@ -458,9 +458,26 @@ export default class ChatBotClient extends EventEmitter {
                 this.unoCommand(banRequest, username, channel, client);
                 break;
             }
+            case "ban": {
+                if (!username) return;
+                const userToBan = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
+                this.banCommand(username, userToBan, channel, client);
+                break;
+            }
+            case "rob": {
+                const userToRemoveTokens = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
+                this.db.remove({ login: userToRemoveTokens }, { multi: true }, (err: Error | null, n: number) => {
+                    if (err) logger.error(err);
+                    else {
+                        logger.info(`[ROBBED] [${channel}] ${userToRemoveTokens} has had all of their tokens REMOVED!`);
+                        client.say(channel, `@${userToRemoveTokens} has lost all ${n} of their ban tokens`);
+                    }
+                });
+                break;
+            }
             default:
                 client
-                    .say(channel, "Usage: !b2b [msg | cost | time | expire | gifts] [args]")
+                    .say(channel, "Usage: !b2b [msg | cost | time | expire | gifts | rob] [args]")
                     .catch((err) => logger.error(err));
                 break;
         }
@@ -530,10 +547,44 @@ export default class ChatBotClient extends EventEmitter {
                 this.unoCommand(banRequest, username, channel, client);
                 break;
             }
+            case "ban": {
+                if (!username) return;
+                const userToBan = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
+                this.banCommand(username, userToBan, channel, client);
+                break;
+            }
             default:
                 client.say(channel, "Usage: !b2b [tokens | uno | how | war | code]").catch((err) => logger.error(err));
                 break;
         }
+    }
+
+    private banCommand(username: string, userToBan: string, channel: string, client: Client) {
+        // check if they have a token
+        this.db.find({ login: username }, (err: Error, tokens: BanToken[]) => {
+            if (err) {
+                logger.error(err);
+                return;
+            }
+            // if user has a token, ban the userToBan
+            if (tokens.length > 0) {
+                // finds the token that's closest to expiration
+                let id = tokens[0]._id;
+                let closestExpiration = tokens[0].creationDate + this.banTokenExpireTime * 1000;
+                tokens.forEach((token) => {
+                    const expireDate = token.creationDate + this.banTokenExpireTime * 1000;
+                    if (expireDate < closestExpiration) {
+                        id = token._id;
+                        closestExpiration = expireDate;
+                    }
+                });
+                this.timeoutUser(channel, userToBan, username);
+                this.db.remove({ _id: id }, (error: Error | null) => {
+                    if (error) logger.error(err);
+                    else logger.info(`[REDEEM] [${channel}] ${username} has banned a user with a token`);
+                });
+            } else client.say(channel, `@${username} you don't have any ban tokens!`);
+        });
     }
 
     private unoCommand(banRequest: BanRequest | undefined, username: string, channel: string, client: Client) {
@@ -548,16 +599,26 @@ export default class ChatBotClient extends EventEmitter {
             }
             // if user has a token, uno reverse card
             if (tokens.length > 0) {
+                // finds the token that's closest to expiration
+                let id = tokens[0]._id;
+                let closestExpiration = tokens[0].creationDate + this.banTokenExpireTime * 1000;
+                tokens.forEach((token) => {
+                    const expireDate = token.creationDate + this.banTokenExpireTime * 1000;
+                    if (expireDate < closestExpiration) {
+                        id = token._id;
+                        closestExpiration = expireDate;
+                    }
+                });
                 clearTimeout(banRequest.timeout);
                 this.banQueue = this.banQueue.filter(
                     (ban) => ban.userToBan !== username || ban.banRequester !== banRequest.banRequester
                 ); // removes this ban from list
                 this.timeoutUser(channel, banRequest.banRequester, banRequest.userToBan, true, banRequest.count);
-                this.db.remove({ _id: tokens[0]._id }, (error: Error | null) => {
+                this.db.remove({ _id: id }, (error: Error | null) => {
                     if (error) logger.error(err);
                     else logger.info(`[REDEEM] [${channel}] ${username} has reversed a ban with a token`);
                 });
-            }
+            } else client.say(channel, `@${username} you don't have any ban tokens!`);
         });
     }
 
