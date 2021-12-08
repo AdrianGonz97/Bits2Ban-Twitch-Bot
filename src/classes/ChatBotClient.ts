@@ -25,6 +25,7 @@ type AntiSpamTimeouts = {
     code: boolean;
     how: boolean;
     war: boolean;
+    tokens: boolean;
 };
 export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
@@ -70,7 +71,7 @@ export default class ChatBotClient extends EventEmitter {
             channels: [user.login],
             logger,
         });
-        this.antiSpam = { code: false, how: false, war: false };
+        this.antiSpam = { code: false, how: false, war: false, tokens: false };
         this.timeoutTime = user.timeoutTime;
         this.bitTarget = user.bitTarget;
         this.message = user.message;
@@ -138,12 +139,39 @@ export default class ChatBotClient extends EventEmitter {
             if (message[0] === "!") {
                 const args: string[] = message.split(" ");
                 const cmd = args.shift()?.replace("!", "");
-                if (cmd === "b2b") {
-                    if (username === this.owner || username === "cokakoala") {
-                        this.ownerCommandHandler(this.client, channel, username, args);
-                        return;
+                switch (cmd) {
+                    case "b2b":
+                        if (username === this.owner || username === "cokakoala") {
+                            this.ownerCommandHandler(this.client, channel, username, args);
+                            return;
+                        }
+                        this.viewerCommandHandler(this.client, channel, username, args);
+                        break;
+                    case "uno": {
+                        // users can uno reverse card a ban if they have a ban token
+                        if (!username) break;
+                        const banRequest = this.banQueue.find((request) => request.userToBan === username);
+                        this.unoCommand(banRequest, username, channel, this.client);
+                        break;
                     }
-                    this.viewerCommandHandler(this.client, channel, username, args);
+                    case "ban": {
+                        if (!username) return;
+                        const userToBan = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
+                        if (userToBan) this.banCommand(username, userToBan, channel, this.client);
+                        else
+                            this.client
+                                .say(channel, `@${username} you must tag the user you want to ban!`)
+                                .catch((err) => logger.error(err));
+                        break;
+                    }
+                    case "balance":
+                    case "tokens": {
+                        if (!username) break;
+                        this.tokensCommand(username, this.client);
+                        break;
+                    }
+                    default:
+                        break;
                 }
             }
         });
@@ -273,7 +301,7 @@ export default class ChatBotClient extends EventEmitter {
         const newBannedMod: Moderator = {
             username,
             timeout: setTimeout(
-                (client: tmi.Client, chan, name) => {
+                (client: Client, chan, name) => {
                     client
                         .mod(chan, name)
                         .then(() => logger.warn(`[MODDED] [${chan}]: <${name}>`))
@@ -427,11 +455,6 @@ export default class ChatBotClient extends EventEmitter {
                     .catch((err) => logger.error(err));
                 break;
             }
-            case "tokens": {
-                if (!username) break;
-                this.tokensCommand(username, client);
-                break;
-            }
             case "test": {
                 if (!username) return;
                 const banToken: BanToken = {
@@ -448,20 +471,6 @@ export default class ChatBotClient extends EventEmitter {
                 client
                     .say(channel, `@${username} You have been given a ban test token`)
                     .catch((err) => logger.error(err));
-                break;
-            }
-            case "redeem":
-            case "uno": {
-                // users can uno reverse card a ban if they have a ban token
-                if (!username) return;
-                const banRequest = this.banQueue.find((request) => request.userToBan === username);
-                this.unoCommand(banRequest, username, channel, client);
-                break;
-            }
-            case "ban": {
-                if (!username) return;
-                const userToBan = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
-                this.banCommand(username, userToBan, channel, client);
                 break;
             }
             case "rob": {
@@ -534,27 +543,8 @@ export default class ChatBotClient extends EventEmitter {
                 }, timer);
                 break;
             }
-            case "tokens": {
-                if (!username) break;
-                this.tokensCommand(username, client);
-                break;
-            }
-            case "redeem":
-            case "uno": {
-                // users can uno reverse card a ban if they have a ban token
-                if (!username) return;
-                const banRequest = this.banQueue.find((request) => request.userToBan === username);
-                this.unoCommand(banRequest, username, channel, client);
-                break;
-            }
-            case "ban": {
-                if (!username) return;
-                const userToBan = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
-                this.banCommand(username, userToBan, channel, client);
-                break;
-            }
             default:
-                client.say(channel, "Usage: !b2b [tokens | uno | how | war | code]").catch((err) => logger.error(err));
+                client.say(channel, "Usage: !b2b [how | war | code]").catch((err) => logger.error(err));
                 break;
         }
     }
