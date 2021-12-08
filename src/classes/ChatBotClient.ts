@@ -105,11 +105,11 @@ export default class ChatBotClient extends EventEmitter {
             if (!userstate.bits) return;
             const banRequester = userstate.username?.toLowerCase() ?? "";
             logger.info(`[CHEER] [${channel}] <${banRequester}>: ${message}`);
+            const bitsCheered = parseInt(userstate.bits);
+            const bitsRequired = parseInt(this.bitTarget);
             // anyone on the whitelist can cheer at any amount to timeout someone
-            if (userstate.bits >= this.bitTarget || this.whitelist.includes(banRequester)) {
+            if (bitsCheered >= bitsRequired || this.whitelist.includes(banRequester)) {
                 const banRequest = this.banQueue.find((request) => request.userToBan === banRequester);
-                const bitsCheered = parseInt(userstate.bits);
-                const bitsRequired = parseInt(this.bitTarget);
                 const numOfTokens = Math.floor(bitsCheered / bitsRequired);
 
                 // if this is a uno reverse card
@@ -139,6 +139,7 @@ export default class ChatBotClient extends EventEmitter {
                         this.timeoutUser(channel, userToBan, banRequester);
                     }
                 } else {
+                    if (numOfTokens === 0) return;
                     this.addBanToken(banRequester, numOfTokens);
                     this.client
                         .say(channel, `@${banRequester} You have received ${numOfTokens} ban tokens!`)
