@@ -102,14 +102,20 @@ export default class ChatBotClient extends EventEmitter {
 
     private setEvents() {
         this.client.on("cheer", (channel: string, userstate: tmi.ChatUserstate, message: string) => {
-            const banRequester = userstate.username ?? "";
+            if (!userstate.bits) return;
+            const banRequester = userstate.username?.toLowerCase() ?? "";
             logger.info(`[CHEER] [${channel}] <${banRequester}>: ${message}`);
             // anyone on the whitelist can cheer at any amount to timeout someone
-            if (userstate.bits === this.bitTarget || this.whitelist.includes(banRequester)) {
+            if (userstate.bits >= this.bitTarget || this.whitelist.includes(banRequester)) {
                 const banRequest = this.banQueue.find((request) => request.userToBan === banRequester);
+                const bitsCheered = parseInt(userstate.bits);
+                const bitsRequired = parseInt(this.bitTarget);
+                const numOfTokens = Math.floor(bitsCheered / bitsRequired);
 
+                // if this is a uno reverse card
                 if (banRequest) {
-                    // if this is a uno reverse card
+                    // add additional tokens to user if they provided more bits than needed
+                    this.addBanToken(banRequester, numOfTokens - 1);
                     clearTimeout(banRequest.timeout);
                     this.banQueue = this.banQueue.filter(
                         (ban) => ban.userToBan !== banRequester || ban.banRequester !== banRequest.banRequester
@@ -121,6 +127,8 @@ export default class ChatBotClient extends EventEmitter {
                 // if just a normal ban req
                 const found = ChatBotClient.getTaggedUser(message);
                 if (found) {
+                    // add additional tokens to user if they provided more bits than needed
+                    this.addBanToken(banRequester, numOfTokens - 1);
                     const userToBan = found.slice(1); // removes the @
                     // if the banner requests to ban the broadcaster or someone in the whitelist
                     if (userToBan === this.owner || this.whitelist.includes(userToBan)) {
@@ -131,6 +139,7 @@ export default class ChatBotClient extends EventEmitter {
                         this.timeoutUser(channel, userToBan, banRequester);
                     }
                 } else {
+                    this.addBanToken(banRequester, numOfTokens);
                     logger.warn(`[${channel}] No username was tagged in ${userstate.username}'s message`);
                 }
             }
@@ -186,20 +195,7 @@ export default class ChatBotClient extends EventEmitter {
             // check if the gited amount is 5 (or a custom amount?)
             if (numOfSubsGifted >= this.numOfGiftedSubs && gifterLogin) {
                 const numOfTokens = Math.floor(numOfSubsGifted / this.numOfGiftedSubs);
-                for (let i = 0; i < numOfTokens; i += 1) {
-                    // add token to channel owner db
-                    const banToken: BanToken = {
-                        login: gifterLogin,
-                        creationDate: Date.now(),
-                    };
-                    this.db.insert(banToken, (err, doc: BanToken) => {
-                        if (err) {
-                            logger.error(err);
-                        } else {
-                            logger.info(`Added Ban Token for <${doc.login}> with ID: ${doc._id}`);
-                        }
-                    });
-                }
+                this.addBanToken(username, numOfTokens);
             }
         });
 
@@ -318,6 +314,23 @@ export default class ChatBotClient extends EventEmitter {
             ),
         };
         this.bannedMods.push(newBannedMod);
+    }
+
+    private addBanToken(username: string, numOfTokens: number) {
+        for (let i = 0; i < numOfTokens; i += 1) {
+            // add token to channel owner db
+            const banToken: BanToken = {
+                login: username,
+                creationDate: Date.now(),
+            };
+            this.db.insert(banToken, (err, doc: BanToken) => {
+                if (err) {
+                    logger.error(err);
+                } else {
+                    logger.info(`Added Ban Token for <${doc.login}> with ID: ${doc._id}`);
+                }
+            });
+        }
     }
 
     /* parses the message to extract the tagged user */
@@ -459,17 +472,7 @@ export default class ChatBotClient extends EventEmitter {
             }
             case "test": {
                 if (!username) return;
-                const banToken: BanToken = {
-                    login: username,
-                    creationDate: Date.now(),
-                };
-                this.db.insert(banToken, (err, doc: BanToken) => {
-                    if (err) {
-                        logger.error(err);
-                    } else {
-                        logger.info(`Added Ban Token for <${doc.login}> with ID: ${doc._id}`);
-                    }
-                });
+                this.addBanToken(username, 1);
                 client
                     .say(channel, `@${username} You have been given a ban test token`)
                     .catch((err) => logger.error(err));
