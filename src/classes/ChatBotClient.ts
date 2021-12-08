@@ -634,7 +634,7 @@ export default class ChatBotClient extends EventEmitter {
                     client.say(channel, `@${username} ${msg}`).catch((er) => logger.error(er));
                     setTimeout(() => {
                         this.antiSpam.tokens = false;
-                    }, timer);
+                    }, 10 * 1000);
                 }
 
                 if (tokens.length > 0) msg += `Your tokens will expire in the following times:\n`;
