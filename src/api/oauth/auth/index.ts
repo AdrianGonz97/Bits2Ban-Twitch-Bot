@@ -56,6 +56,7 @@ export default async function post(req: Request, res: Response) {
                     message: "was banned by",
                     bitTarget: "2000",
                     timeoutTime: 609,
+                    tokenExpireTime: 60 * 60 * 12,
                 };
 
                 addUser(user);

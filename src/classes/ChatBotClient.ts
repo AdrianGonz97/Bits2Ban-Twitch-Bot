@@ -3,8 +3,10 @@
 /* eslint-disable radix */
 import tmi, { Client } from "tmi.js";
 import { EventEmitter } from "events";
+import Datastore from "nedb";
 import logger from "$logger";
 import { User } from "$class/User";
+import { BanToken } from "$class/BanToken";
 
 type BanRequest = {
     userToBan: string;
@@ -34,7 +36,13 @@ export default class ChatBotClient extends EventEmitter {
 
     private owner: string;
 
+    private db: Datastore;
+
+    private banTokenExpireTime: number; // seconds
+
     private client: Client;
+
+    private numOfGiftedSubs: number;
 
     timeoutTime; // seconds
 
@@ -65,6 +73,18 @@ export default class ChatBotClient extends EventEmitter {
         this.timeoutTime = user.timeoutTime;
         this.bitTarget = user.bitTarget;
         this.message = user.message;
+        this.banTokenExpireTime = user.tokenExpireTime;
+
+        this.numOfGiftedSubs = 5;
+
+        this.db = new Datastore({
+            filename: `./data/ban-tokens/${this.owner}.db`,
+            timestampData: true,
+        });
+        this.db.loadDatabase(() => {
+            this.updateTokenExpirationTime();
+        });
+
         this.setEvents();
     }
 
@@ -119,10 +139,37 @@ export default class ChatBotClient extends EventEmitter {
                 const cmd = args.shift()?.replace("!", "");
                 if (cmd === "b2b") {
                     if (username === this.owner || username === "cokakoala") {
-                        this.ownerCommandHandler(this.client, channel, args);
+                        this.ownerCommandHandler(this.client, channel, username, args);
                         return;
                     }
-                    this.viewerCommandHandler(this.client, channel, args);
+                    this.viewerCommandHandler(this.client, channel, username, args);
+                }
+            }
+        });
+
+        this.client.on("submysterygift", (channel, username, numOfSubsGifted, methods, userstate) => {
+            // const totalSubsGiftedToChannel = userstate["msg-param-sender-count"];
+            const gifterLogin = userstate.login;
+            logger.warn(`[${channel}] <${gifterLogin}> ${username} gifted ${numOfSubsGifted} subs`);
+
+            // check if the gited amount is 5 (or a custom amount?)
+            if (numOfSubsGifted >= this.numOfGiftedSubs && gifterLogin) {
+                const numOfTokens = Math.floor(numOfSubsGifted / this.numOfGiftedSubs);
+                for (let i = 0; i < numOfTokens; i += 1) {
+                    // add token to channel owner db
+                    const banToken: BanToken = {
+                        login: gifterLogin,
+                        createdAt: Date.now(),
+                        expirationDate: Date.now() + this.banTokenExpireTime * 1000,
+                    };
+                    this.db.insert(banToken, (err, doc: BanToken) => {
+                        if (err) {
+                            logger.error(err);
+                        } else {
+                            // eslint-disable-next-line no-underscore-dangle
+                            logger.info(`Added Ban Token for <${doc.login}> with ID: ${doc._id}`);
+                        }
+                    });
                 }
             }
         });
@@ -141,7 +188,7 @@ export default class ChatBotClient extends EventEmitter {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private ownerCommandHandler(client: Client, channel: string, args: any) {
+    private ownerCommandHandler(client: Client, channel: string, username: string | undefined, args: any) {
         const arg = args.shift();
         switch (arg) {
             case "msg": {
@@ -193,6 +240,26 @@ export default class ChatBotClient extends EventEmitter {
                 }
                 break;
             }
+            case "expire": {
+                if (!isNaN(args[0]) && parseInt(args[0]) < 1209600 && parseInt(args[0]) >= 1) {
+                    const newTime = parseInt(args[0]);
+                    logger.warn(
+                        `Channel [${channel}] has changed ban token expiration time from ${this.banTokenExpireTime} --> ${newTime}`
+                    );
+                    this.banTokenExpireTime = newTime;
+                    client
+                        .say(channel, `Ban token expiration time has been set to ${this.banTokenExpireTime} seconds`)
+                        .catch((err) => logger.error(err));
+
+                    this.updateTokenExpirationTime();
+                    this.emit("expire", this.owner, this.timeoutTime);
+                } else {
+                    client
+                        .say(channel, "Invalid number of seconds. Must be within the range of [1 - 1209600]")
+                        .catch((err) => logger.error(err));
+                }
+                break;
+            }
             case "how": {
                 client
                     .say(
@@ -216,55 +283,117 @@ export default class ChatBotClient extends EventEmitter {
                     .catch((err) => logger.error(err));
                 break;
             }
+            case "tokens": {
+                if (!username) break;
+                this.db.find({ login: username }, (err: any, tokens: BanToken[]) => {
+                    if (err) {
+                        logger.error(err);
+                    } else {
+                        const filteredTokens = tokens.filter((token) => Date.now() < token.expirationDate);
+
+                        let msg = `You have ${filteredTokens.length} ban tokens. `;
+                        if (filteredTokens.length > 0) msg += `Your tokens will expire in the following times:\n`;
+
+                        filteredTokens.forEach((token) => {
+                            // formats time as such: 00h:00m:00s
+                            let timeRemaining = (token.expirationDate - Date.now()) / 1000;
+                            const hours = String(Math.floor(timeRemaining / 3600)).padStart(2, "0");
+                            timeRemaining %= 3600;
+                            const mins = String(Math.floor(timeRemaining / 60)).padStart(2, "0");
+                            const secs = String(Math.floor(timeRemaining % 60)).padStart(2, "0");
+                            msg += `${hours}h:${mins}m:${secs}s\n`;
+                        });
+                        client
+                            .whisper(username, msg)
+                            .then((data) => logger.info(`Whispered ban token balance to ${data[0]}`))
+                            .catch((error) => logger.error(error));
+                    }
+                });
+                break;
+            }
             default:
                 client
-                    .say(channel, "Usage: !b2b [msg | cost | time | how | war | code] [args]")
+                    .say(channel, "Usage: !b2b [msg | cost | time | expire] [args]")
                     .catch((err) => logger.error(err));
                 break;
         }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private viewerCommandHandler(client: Client, channel: string, args: any) {
-        const timer = 45 * 1000;
+    private viewerCommandHandler(client: Client, channel: string, username: string | undefined, args: any) {
+        const timer = 45 * 1000; // 45 sec timer to prevent cmd spam
         const arg = args.shift();
         switch (arg) {
             case "how": {
-                if (this.antiSpam.how) break;
+                if (!username) break;
+                const msg = `To ban someone with bits, just CHEER ${this.bitTarget} bits and @ the user you want to ban anywhere in the same message. When someone is banned, they will be banned for ${this.timeoutTime} seconds, unless they retaliate with bits, starting a war. To learn about war, type !b2b war`;
+                // whipsers to user if already said in chat
+                if (this.antiSpam.how) {
+                    client.whisper(username, msg).catch((err) => logger.error(err));
+                    return;
+                }
                 this.antiSpam.how = true;
-                client
-                    .say(
-                        channel,
-                        `To ban someone with bits, just CHEER ${this.bitTarget} bits and @ the user you want to ban anywhere in the same message. When someone is banned, they will be banned for ${this.timeoutTime} seconds, unless they retaliate with bits, starting a war. To learn about war, type !b2b war`
-                    )
-                    .catch((err) => logger.error(err));
+                client.say(channel, msg).catch((err) => logger.error(err));
                 setTimeout(() => {
                     this.antiSpam.how = false;
                 }, timer);
                 break;
             }
             case "code": {
-                if (this.antiSpam.code) break;
-                this.antiSpam.code = true;
+                if (!username) break;
                 const src = "https://github.com/AdrianGonz97/Bits2Ban-Twitch-Bot";
-                client.say(channel, `Link to source code: ${src}`).catch((err) => logger.error(err));
+                const msg = `Link to source code: ${src}`;
+                // whipsers to user if already said in chat
+                if (this.antiSpam.code) {
+                    client.whisper(username, msg).catch((err) => logger.error(err));
+                    return;
+                }
+                this.antiSpam.code = true;
+                client.say(channel, msg).catch((err) => logger.error(err));
                 setTimeout(() => {
                     this.antiSpam.code = false;
                 }, timer);
                 break;
             }
             case "war": {
-                if (this.antiSpam.war) break;
+                if (!username) break;
+                const msg = `If someone donates to ban you, you can start a war by CHEERing ${this.bitTarget} bits in response. This must be done during your "final words" stage. After the CHEER, the ban will be sent back to the user that tried to ban you. They will also have an opportunity to send the ban right back to you again. The user that ends up being banned will be timed out for ${this.timeoutTime} seconds multiplied by the amount of times the ban went back and forth.`;
+                // whipsers to user if already said in chat
+                if (this.antiSpam.war) {
+                    client.whisper(username, msg).catch((err) => logger.error(err));
+                    return;
+                }
                 this.antiSpam.war = true;
-                client
-                    .say(
-                        channel,
-                        `If someone donates to ban you, you can start a war by CHEERing ${this.bitTarget} bits in response. This must be done during your "final words" stage. After the CHEER, the ban will be sent back to the user that tried to ban you. They will also have an opportunity to send the ban right back to you again. The user that ends up being banned will be timed out for ${this.timeoutTime} seconds multiplied by the amount of times the ban went back and forth.`
-                    )
-                    .catch((err) => logger.error(err));
+                client.say(channel, msg).catch((err) => logger.error(err));
                 setTimeout(() => {
                     this.antiSpam.war = false;
                 }, timer);
+                break;
+            }
+            case "tokens": {
+                if (!username) break;
+                this.db.find({ login: username }, (err: any, tokens: BanToken[]) => {
+                    if (err) {
+                        logger.error(err);
+                    } else {
+                        let msg = `You have ${tokens.length} ban tokens. `;
+                        if (tokens.length > 0) msg += `Your tokens will expire in the following times:\n`;
+
+                        tokens.forEach((token) => {
+                            // formats time as such: 00h:00m:00s
+                            let timeRemaining = (token.expirationDate - Date.now()) / 1000;
+                            const hours = String(Math.floor(timeRemaining / 3600)).padStart(2, "0");
+                            timeRemaining %= 3600;
+                            const mins = String(Math.floor(timeRemaining / 60)).padStart(2, "0");
+                            const secs = String(Math.floor(timeRemaining % 60)).padStart(2, "0");
+                            msg += `${hours}h:${mins}m:${secs}s\n`;
+                        });
+                        client
+                            .whisper(username, msg)
+                            .then((data) => logger.info(`Whispered ban token balance to ${data[0]}`))
+                            .catch((error) => logger.error(error));
+                    }
+                });
                 break;
             }
             default:
@@ -383,5 +512,14 @@ export default class ChatBotClient extends EventEmitter {
         const taggedUsers = message.match(usernameRegex);
         const found = taggedUsers?.find((el) => el.length > 4); // shortest username is 4 chars
         return found?.toLowerCase() ?? "";
+    }
+
+    private updateTokenExpirationTime() {
+        this.db.removeIndex("createdAt", (err) => {
+            if (err) logger.error(err);
+        });
+        this.db.ensureIndex({ fieldName: "createdAt", expireAfterSeconds: this.banTokenExpireTime }, (err) => {
+            if (err) logger.error(err);
+        });
     }
 }

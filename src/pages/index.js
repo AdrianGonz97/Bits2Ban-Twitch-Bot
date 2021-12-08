@@ -23,7 +23,15 @@ window.onload = async () => {
     }
 
     const state = generateState();
-    const scopes = ["bits:read", "user:read:email", "channel:moderate", "chat:read", "chat:edit"];
+    const scopes = [
+        "bits:read",
+        "user:read:email",
+        "channel:moderate",
+        "chat:read",
+        "chat:edit",
+        "whispers:read",
+        "whispers:edit",
+    ];
 
     window.localStorage.setItem("state", state);
 
