@@ -27,6 +27,8 @@ type AntiSpamTimeouts = {
     war: boolean;
     tokens: boolean;
 };
+
+const timer = 45 * 1000; // 45 sec timer to prevent cmd spam
 export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
 
@@ -167,7 +169,7 @@ export default class ChatBotClient extends EventEmitter {
                     case "balance":
                     case "tokens": {
                         if (!username) break;
-                        this.tokensCommand(username, this.client);
+                        this.tokensCommand(username, channel, this.client);
                         break;
                     }
                     default:
@@ -494,7 +496,6 @@ export default class ChatBotClient extends EventEmitter {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private viewerCommandHandler(client: Client, channel: string, username: string | undefined, args: any) {
-        const timer = 45 * 1000; // 45 sec timer to prevent cmd spam
         const arg = args.shift();
         switch (arg) {
             case "how": {
@@ -573,7 +574,10 @@ export default class ChatBotClient extends EventEmitter {
                     if (error) logger.error(err);
                     else logger.info(`[REDEEM] [${channel}] ${username} has banned a user with a token`);
                 });
-            } else client.say(channel, `@${username} you don't have any ban tokens!`);
+            } else
+                client
+                    .say(channel, `@${username} you don't have any ban tokens!`)
+                    .catch((error) => logger.error(error));
         });
     }
 
@@ -608,16 +612,28 @@ export default class ChatBotClient extends EventEmitter {
                     if (error) logger.error(err);
                     else logger.info(`[REDEEM] [${channel}] ${username} has reversed a ban with a token`);
                 });
-            } else client.say(channel, `@${username} you don't have any ban tokens!`);
+            } else
+                client
+                    .say(channel, `@${username} you don't have any ban tokens!`)
+                    .catch((error) => logger.error(error));
         });
     }
 
-    private tokensCommand(username: string, client: Client) {
+    private tokensCommand(username: string, channel: string, client: Client) {
         this.db.find({ login: username }, (err: Error, tokens: BanToken[]) => {
             if (err) {
                 logger.error(err);
             } else {
                 let msg = `You have ${tokens.length} ban tokens. `;
+                // whipsers to user if already said in chat
+                if (!this.antiSpam.tokens) {
+                    this.antiSpam.tokens = true;
+                    client.say(channel, `@${username} ${msg}`).catch((er) => logger.error(er));
+                    setTimeout(() => {
+                        this.antiSpam.tokens = false;
+                    }, timer);
+                }
+
                 if (tokens.length > 0) msg += `Your tokens will expire in the following times:\n`;
 
                 tokens.forEach((token) => {
