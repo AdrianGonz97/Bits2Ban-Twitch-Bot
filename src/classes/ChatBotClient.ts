@@ -429,29 +429,7 @@ export default class ChatBotClient extends EventEmitter {
             }
             case "tokens": {
                 if (!username) break;
-                this.db.find({ login: username }, (err: Error, tokens: BanToken[]) => {
-                    if (err) {
-                        logger.error(err);
-                    } else {
-                        let msg = `You have ${tokens.length} ban tokens. `;
-                        if (tokens.length > 0) msg += `Your tokens will expire in the following times:\n`;
-
-                        tokens.forEach((token) => {
-                            // formats time as such: 00h:00m:00s
-                            const expirationDate = token.creationDate + this.banTokenExpireTime * 1000;
-                            let timeRemaining = (expirationDate - Date.now()) / 1000;
-                            const hours = String(Math.floor(timeRemaining / 3600)).padStart(2, "0");
-                            timeRemaining %= 3600;
-                            const mins = String(Math.floor(timeRemaining / 60)).padStart(2, "0");
-                            const secs = String(Math.floor(timeRemaining % 60)).padStart(2, "0");
-                            msg += `${hours}h:${mins}m:${secs}s\n`;
-                        });
-                        client
-                            .whisper(username, msg)
-                            .then((data) => logger.info(`Whispered ban token balance to ${data[0]}`))
-                            .catch((error) => logger.error(error));
-                    }
-                });
+                this.tokensCommand(username, client);
                 break;
             }
             case "test": {
@@ -475,31 +453,9 @@ export default class ChatBotClient extends EventEmitter {
             case "redeem":
             case "uno": {
                 // users can uno reverse card a ban if they have a ban token
+                if (!username) return;
                 const banRequest = this.banQueue.find((request) => request.userToBan === username);
-                this.db.find({ login: username }, (err: Error, tokens: BanToken[]) => {
-                    if (err) {
-                        logger.error(err);
-                        return;
-                    }
-                    // if user has a token, uno reverse card
-                    if (banRequest && tokens.length > 0) {
-                        clearTimeout(banRequest.timeout);
-                        this.banQueue = this.banQueue.filter(
-                            (ban) => ban.userToBan !== username || ban.banRequester !== banRequest.banRequester
-                        ); // removes this ban from list
-                        this.timeoutUser(
-                            channel,
-                            banRequest.banRequester,
-                            banRequest.userToBan,
-                            true,
-                            banRequest.count
-                        );
-                        this.db.remove({ _id: tokens[0]._id }, (error: Error | null) => {
-                            if (error) logger.error(err);
-                            else logger.info(`[REDEEM] [${channel}] ${username} has reversed a ban with a token`);
-                        });
-                    } else client.say(channel, `@${username} you must first be at war!`);
-                });
+                this.unoCommand(banRequest, username, channel, client);
                 break;
             }
             default:
@@ -563,64 +519,71 @@ export default class ChatBotClient extends EventEmitter {
             }
             case "tokens": {
                 if (!username) break;
-                this.db.find({ login: username }, (err: Error, tokens: BanToken[]) => {
-                    if (err) {
-                        logger.error(err);
-                    } else {
-                        let msg = `You have ${tokens.length} ban tokens. `;
-                        if (tokens.length > 0) msg += `Your tokens will expire in the following times:\n`;
-
-                        tokens.forEach((token) => {
-                            // formats time as such: 00h:00m:00s
-                            const expirationDate = token.creationDate + this.banTokenExpireTime * 1000;
-                            let timeRemaining = (expirationDate - Date.now()) / 1000;
-                            const hours = String(Math.floor(timeRemaining / 3600)).padStart(2, "0");
-                            timeRemaining %= 3600;
-                            const mins = String(Math.floor(timeRemaining / 60)).padStart(2, "0");
-                            const secs = String(Math.floor(timeRemaining % 60)).padStart(2, "0");
-                            msg += `${hours}h:${mins}m:${secs}s\n`;
-                        });
-                        client
-                            .whisper(username, msg)
-                            .then((data) => logger.info(`Whispered ban token balance to ${data[0]}`))
-                            .catch((error) => logger.error(error));
-                    }
-                });
+                this.tokensCommand(username, client);
                 break;
             }
             case "redeem":
             case "uno": {
                 // users can uno reverse card a ban if they have a ban token
+                if (!username) return;
                 const banRequest = this.banQueue.find((request) => request.userToBan === username);
-                this.db.find({ login: username }, (err: Error, tokens: BanToken[]) => {
-                    if (err) {
-                        logger.error(err);
-                        return;
-                    }
-                    // if user has a token, uno reverse card
-                    if (banRequest && tokens.length > 0) {
-                        clearTimeout(banRequest.timeout);
-                        this.banQueue = this.banQueue.filter(
-                            (ban) => ban.userToBan !== username || ban.banRequester !== banRequest.banRequester
-                        ); // removes this ban from list
-                        this.timeoutUser(
-                            channel,
-                            banRequest.banRequester,
-                            banRequest.userToBan,
-                            true,
-                            banRequest.count
-                        );
-                        this.db.remove({ _id: tokens[0]._id }, (error: Error | null) => {
-                            if (error) logger.error(err);
-                            else logger.info(`[REDEEM] [${channel}] ${username} has reversed a ban with a token`);
-                        });
-                    }
-                });
+                this.unoCommand(banRequest, username, channel, client);
                 break;
             }
             default:
                 client.say(channel, "Usage: !b2b [tokens | uno | how | war | code]").catch((err) => logger.error(err));
                 break;
         }
+    }
+
+    private unoCommand(banRequest: BanRequest | undefined, username: string, channel: string, client: Client) {
+        if (!banRequest) {
+            client.say(channel, `@${username} you must first be at war!`).catch((err) => logger.error(err));
+            return;
+        }
+        this.db.find({ login: username }, (err: Error, tokens: BanToken[]) => {
+            if (err) {
+                logger.error(err);
+                return;
+            }
+            // if user has a token, uno reverse card
+            if (tokens.length > 0) {
+                clearTimeout(banRequest.timeout);
+                this.banQueue = this.banQueue.filter(
+                    (ban) => ban.userToBan !== username || ban.banRequester !== banRequest.banRequester
+                ); // removes this ban from list
+                this.timeoutUser(channel, banRequest.banRequester, banRequest.userToBan, true, banRequest.count);
+                this.db.remove({ _id: tokens[0]._id }, (error: Error | null) => {
+                    if (error) logger.error(err);
+                    else logger.info(`[REDEEM] [${channel}] ${username} has reversed a ban with a token`);
+                });
+            }
+        });
+    }
+
+    private tokensCommand(username: string, client: Client) {
+        this.db.find({ login: username }, (err: Error, tokens: BanToken[]) => {
+            if (err) {
+                logger.error(err);
+            } else {
+                let msg = `You have ${tokens.length} ban tokens. `;
+                if (tokens.length > 0) msg += `Your tokens will expire in the following times:\n`;
+
+                tokens.forEach((token) => {
+                    // formats time as such: 00h:00m:00s
+                    const expirationDate = token.creationDate + this.banTokenExpireTime * 1000;
+                    let timeRemaining = (expirationDate - Date.now()) / 1000;
+                    const hours = String(Math.floor(timeRemaining / 3600)).padStart(2, "0");
+                    timeRemaining %= 3600;
+                    const mins = String(Math.floor(timeRemaining / 60)).padStart(2, "0");
+                    const secs = String(Math.floor(timeRemaining % 60)).padStart(2, "0");
+                    msg += `${hours}h:${mins}m:${secs}s\n`;
+                });
+                client
+                    .whisper(username, msg)
+                    .then((data) => logger.info(`Whispered ban token balance to ${data[0]}`))
+                    .catch((error) => logger.error(error));
+            }
+        });
     }
 }
