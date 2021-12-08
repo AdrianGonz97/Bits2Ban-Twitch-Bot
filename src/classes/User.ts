@@ -12,5 +12,6 @@ export type User = {
     bitTarget: string;
     timeoutTime: number;
     tokenExpireTime: number;
+    numOfGiftedSubs: number;
     _id?: string;
 };

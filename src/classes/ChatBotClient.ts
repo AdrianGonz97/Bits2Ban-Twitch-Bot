@@ -148,7 +148,7 @@ export default class ChatBotClient extends EventEmitter {
         });
 
         this.client.on("submysterygift", (channel, username, numOfSubsGifted, methods, userstate) => {
-            // const totalSubsGiftedToChannel = userstate["msg-param-sender-count"];
+            if (this.numOfGiftedSubs <= 0) return;
             const gifterLogin = userstate.login;
             logger.warn(`[${channel}] <${gifterLogin}> ${username} gifted ${numOfSubsGifted} subs`);
 
@@ -216,7 +216,31 @@ export default class ChatBotClient extends EventEmitter {
                     client
                         .say(
                             channel,
-                            "Invalid number of bits. Must be within the range of [0 - 1000000]. A 0 indicates an OFF state."
+                            "Invalid number of bits. Must be within the range of [0 - 1000000]. A 0 indicates an DISABLED state."
+                        )
+                        .catch((err) => logger.error(err));
+                }
+                break;
+            }
+            case "gifts": {
+                if (!isNaN(args[0]) && parseInt(args[0]) < 1000000 && parseInt(args[0]) >= 0) {
+                    const newBitTarget = args.shift();
+                    logger.warn(
+                        `Channel [${channel}] has changed gifted subs required from ${this.numOfGiftedSubs} --> ${newBitTarget}`
+                    );
+                    this.numOfGiftedSubs = newBitTarget;
+                    client
+                        .say(
+                            channel,
+                            `Gifted subs required to earn a token has been set to ${this.numOfGiftedSubs} subs`
+                        )
+                        .catch((err) => logger.error(err));
+                    this.emit("gifts", this.owner, this.numOfGiftedSubs);
+                } else {
+                    client
+                        .say(
+                            channel,
+                            "Invalid number of gifted subs. Must be within the range of [0 - 1000000]. A 0 indicates an DISABLED state."
                         )
                         .catch((err) => logger.error(err));
                 }
@@ -252,7 +276,7 @@ export default class ChatBotClient extends EventEmitter {
                         .catch((err) => logger.error(err));
 
                     this.updateTokenExpirationTime();
-                    this.emit("expire", this.owner, this.timeoutTime);
+                    this.emit("expire", this.owner, this.banTokenExpireTime);
                 } else {
                     client
                         .say(channel, "Invalid number of seconds. Must be within the range of [1 - 1209600]")
@@ -285,7 +309,7 @@ export default class ChatBotClient extends EventEmitter {
             }
             case "tokens": {
                 if (!username) break;
-                this.db.find({ login: username }, (err: any, tokens: BanToken[]) => {
+                this.db.find({ login: username }, (err: Error, tokens: BanToken[]) => {
                     if (err) {
                         logger.error(err);
                     } else {
@@ -313,7 +337,7 @@ export default class ChatBotClient extends EventEmitter {
             }
             default:
                 client
-                    .say(channel, "Usage: !b2b [msg | cost | time | expire] [args]")
+                    .say(channel, "Usage: !b2b [msg | cost | time | expire | gifts] [args]")
                     .catch((err) => logger.error(err));
                 break;
         }
@@ -372,7 +396,7 @@ export default class ChatBotClient extends EventEmitter {
             }
             case "tokens": {
                 if (!username) break;
-                this.db.find({ login: username }, (err: any, tokens: BanToken[]) => {
+                this.db.find({ login: username }, (err: Error, tokens: BanToken[]) => {
                     if (err) {
                         logger.error(err);
                     } else {
