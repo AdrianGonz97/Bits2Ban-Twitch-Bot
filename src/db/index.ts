@@ -7,7 +7,6 @@ import ChatBotClient from "$class/ChatBotClient";
 
 const users = new Datastore({
     filename: `./data/users.db`,
-    autoload: true,
 });
 
 export function addUser(user: User) {
@@ -93,6 +92,12 @@ export function addListeners(client: ChatBotClient) {
     });
     client.on("time", (owner: string, timeoutTime: number) => {
         updateField(owner, { timeoutTime } as Field);
+    });
+    client.on("expire", (owner: string, tokenExpireTime: number) => {
+        updateField(owner, { tokenExpireTime } as Field);
+    });
+    client.on("gifts", (owner: string, numOfGiftedSubs: number) => {
+        updateField(owner, { numOfGiftedSubs } as Field);
     });
 }
 
