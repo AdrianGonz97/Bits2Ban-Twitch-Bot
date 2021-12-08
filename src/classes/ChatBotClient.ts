@@ -484,6 +484,20 @@ export default class ChatBotClient extends EventEmitter {
                     .catch((err) => logger.error(err));
                 break;
             }
+            case "give": {
+                if (!username) return;
+                const userToGiveToken = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
+                if (userToGiveToken) {
+                    this.addBanToken(userToGiveToken, 1);
+                    this.client
+                        .say(channel, `A ban token has been given to @${userToGiveToken}`)
+                        .catch((err) => logger.error(err));
+                } else
+                    this.client
+                        .say(channel, `@${username} you must tag the user you want to give a token to!`)
+                        .catch((err) => logger.error(err));
+                break;
+            }
             case "rob": {
                 const userToRemoveTokens = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
                 this.db.remove({ login: userToRemoveTokens }, { multi: true }, (err: Error | null, n: number) => {
