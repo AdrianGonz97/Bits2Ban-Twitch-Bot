@@ -511,7 +511,7 @@ export default class ChatBotClient extends EventEmitter {
             }
             default:
                 client
-                    .say(channel, "Usage: !b2b [msg | cost | time | expire | gifts | rob] [args]")
+                    .say(channel, "Usage: !b2b [msg | cost | time | expire | gifts | rob | give] [args]")
                     .catch((err) => logger.error(err));
                 break;
         }
