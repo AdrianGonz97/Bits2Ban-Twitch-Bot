@@ -578,7 +578,13 @@ export default class ChatBotClient extends EventEmitter {
                         closestExpiration = expireDate;
                     }
                 });
-                this.timeoutUser(channel, userToBan, username);
+                if (userToBan === this.owner || this.whitelist.includes(userToBan)) {
+                    // ban the requester
+                    this.pogOff(channel, username);
+                } else {
+                    // otherwise, proceed as normal
+                    this.timeoutUser(channel, userToBan, username);
+                }
                 this.db.remove({ _id: id }, (error: Error | null) => {
                     if (error) logger.error(err);
                     else logger.info(`[REDEEM] [${channel}] ${username} has banned a user with a token`);
