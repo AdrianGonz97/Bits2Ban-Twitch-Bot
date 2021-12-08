@@ -159,8 +159,7 @@ export default class ChatBotClient extends EventEmitter {
                     // add token to channel owner db
                     const banToken: BanToken = {
                         login: gifterLogin,
-                        createdAt: Date.now(),
-                        expirationDate: Date.now() + this.banTokenExpireTime * 1000,
+                        creationDate: Date.now(),
                     };
                     this.db.insert(banToken, (err, doc: BanToken) => {
                         if (err) {
@@ -313,14 +312,13 @@ export default class ChatBotClient extends EventEmitter {
                     if (err) {
                         logger.error(err);
                     } else {
-                        const filteredTokens = tokens.filter((token) => Date.now() < token.expirationDate);
+                        let msg = `You have ${tokens.length} ban tokens. `;
+                        if (tokens.length > 0) msg += `Your tokens will expire in the following times:\n`;
 
-                        let msg = `You have ${filteredTokens.length} ban tokens. `;
-                        if (filteredTokens.length > 0) msg += `Your tokens will expire in the following times:\n`;
-
-                        filteredTokens.forEach((token) => {
+                        tokens.forEach((token) => {
                             // formats time as such: 00h:00m:00s
-                            let timeRemaining = (token.expirationDate - Date.now()) / 1000;
+                            const expirationDate = token.creationDate + this.banTokenExpireTime * 1000;
+                            let timeRemaining = (expirationDate - Date.now()) / 1000;
                             const hours = String(Math.floor(timeRemaining / 3600)).padStart(2, "0");
                             timeRemaining %= 3600;
                             const mins = String(Math.floor(timeRemaining / 60)).padStart(2, "0");
@@ -333,6 +331,25 @@ export default class ChatBotClient extends EventEmitter {
                             .catch((error) => logger.error(error));
                     }
                 });
+                break;
+            }
+            case "test": {
+                if (!username) return;
+                const banToken: BanToken = {
+                    login: username,
+                    creationDate: Date.now(),
+                };
+                this.db.insert(banToken, (err, doc: BanToken) => {
+                    if (err) {
+                        logger.error(err);
+                    } else {
+                        // eslint-disable-next-line no-underscore-dangle
+                        logger.info(`Added Ban Token for <${doc.login}> with ID: ${doc._id}`);
+                    }
+                });
+                client
+                    .say(channel, `@${username} You have been given a ban test token`)
+                    .catch((err) => logger.error(err));
                 break;
             }
             default:
@@ -405,7 +422,8 @@ export default class ChatBotClient extends EventEmitter {
 
                         tokens.forEach((token) => {
                             // formats time as such: 00h:00m:00s
-                            let timeRemaining = (token.expirationDate - Date.now()) / 1000;
+                            const expirationDate = token.creationDate + this.banTokenExpireTime * 1000;
+                            let timeRemaining = (expirationDate - Date.now()) / 1000;
                             const hours = String(Math.floor(timeRemaining / 3600)).padStart(2, "0");
                             timeRemaining %= 3600;
                             const mins = String(Math.floor(timeRemaining / 60)).padStart(2, "0");

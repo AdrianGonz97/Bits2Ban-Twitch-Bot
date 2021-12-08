@@ -1,6 +1,6 @@
 export type BanToken = {
     login: string;
-    expirationDate: number;
-    createdAt?: number;
+    creationDate: number;
+    createdAt?: { $$date: number };
     _id?: string;
 };
