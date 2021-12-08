@@ -96,6 +96,9 @@ export function addListeners(client: ChatBotClient) {
     client.on("expire", (owner: string, tokenExpireTime: number) => {
         updateField(owner, { tokenExpireTime } as Field);
     });
+    client.on("gifts", (owner: string, numOfGiftedSubs: number) => {
+        updateField(owner, { numOfGiftedSubs } as Field);
+    });
 }
 
 async function loadBots(savedUsers: User[]) {
