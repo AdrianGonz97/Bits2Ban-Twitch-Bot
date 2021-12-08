@@ -141,9 +141,18 @@ export default class ChatBotClient extends EventEmitter {
                 } else {
                     if (numOfTokens === 0) return;
                     this.addBanToken(banRequester, numOfTokens);
-                    this.client
-                        .say(channel, `@${banRequester} You have received ${numOfTokens} ban tokens!`)
-                        .catch((err) => logger.error(err));
+                    setTimeout(
+                        (client, chan, user, num) =>
+                            client
+                                .say(chan, `@${user} You have received ${num} ban tokens!`)
+                                .catch((err) => logger.error(err)),
+                        3000,
+                        this.client,
+                        channel,
+                        banRequester,
+                        numOfTokens
+                    );
+
                     logger.warn(`[${channel}] No username was tagged in ${userstate.username}'s message`);
                 }
             }
