@@ -17,7 +17,7 @@ export default async function getChatters(broadcaster: string) {
             data: {
                 query: `
                 query ChatViewers() {
-                    channel(name: ${broadcaster}) {
+                    channel(name: "${broadcaster}") {
                         chatters {
                             count
                             viewers {
@@ -34,7 +34,7 @@ export default async function getChatters(broadcaster: string) {
         });
 
         if (resp.status >= 200 && resp.status < 300) {
-            logger.info("Got chatter data");
+            logger.info("Got chatter data for nuke");
             const result: { data: ChatterInfo } = resp.data;
             const { viewers, vips } = result.data.channel.chatters;
             const vipNames = vips.map((chatter) => chatter.login);
