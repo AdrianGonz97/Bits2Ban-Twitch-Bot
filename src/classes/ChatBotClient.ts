@@ -8,8 +8,8 @@ import Datastore from "nedb";
 import logger from "$logger";
 import { User } from "$class/User";
 import { BanToken } from "$class/BanToken";
-import ban from "$src/api/ban/index";
-import getChatters from "$src/api/chatters/index";
+// import ban from "$src/api/ban/index";
+// import getChatters from "$src/api/chatters/index";
 
 type BanRequest = {
     userToBan: string;
