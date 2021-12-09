@@ -3,7 +3,7 @@ import logger from "$logger";
 import { ChatterInfo } from "$class/ChatterInfo";
 
 const url = "https://gql.twitch.tv/gql";
-const clientId = "kimne78kx3ncx6brgo4mv6wki5h1ko";
+const clientId = "kimne78kx3ncx6brgo4mv6wki5h1ko"; // public clientID for twitch gql
 
 export default async function getChatters(broadcaster: string) {
     try {
