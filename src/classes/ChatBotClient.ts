@@ -8,6 +8,8 @@ import Datastore from "nedb";
 import logger from "$logger";
 import { User } from "$class/User";
 import { BanToken } from "$class/BanToken";
+import ban from "$src/api/ban/index";
+import getChatters from "$src/api/chatters/index";
 
 type BanRequest = {
     userToBan: string;
@@ -48,6 +50,8 @@ export default class ChatBotClient extends EventEmitter {
 
     private numOfGiftedSubs: number;
 
+    private accessToken: string;
+
     timeoutTime; // seconds
 
     bitTarget; // bits
@@ -73,6 +77,7 @@ export default class ChatBotClient extends EventEmitter {
             channels: [user.login],
             logger,
         });
+        this.accessToken = user.access_token;
         this.antiSpam = { code: false, how: false, war: false, tokens: false };
         this.timeoutTime = user.timeoutTime;
         this.bitTarget = user.bitTarget;
@@ -691,5 +696,14 @@ export default class ChatBotClient extends EventEmitter {
                     .catch((error) => logger.error(error));
             }
         });
+    }
+
+    private async nukeChat(client: Client, channel: string) {
+        try {
+            const mods = await client.mods(channel);
+            const chatters = [];
+        } catch (error) {
+            logger.error(error);
+        }
     }
 }
