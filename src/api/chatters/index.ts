@@ -23,6 +23,9 @@ export default async function getChatters(broadcaster: string) {
                             viewers {
                                 login
                             }
+                            vips {
+                                login
+                            }
                         }
                     }
                 }
@@ -33,8 +36,9 @@ export default async function getChatters(broadcaster: string) {
         if (resp.status >= 200 && resp.status < 300) {
             logger.info("Got chatter data");
             const result: { data: ChatterInfo } = resp.data;
-            const { viewers } = result.data.channel.chatters;
-            const chatterNames = viewers.map((chatter) => chatter.login);
+            const { viewers, vips } = result.data.channel.chatters;
+            const vipNames = vips.map((chatter) => chatter.login);
+            const chatterNames = viewers.map((chatter) => chatter.login).concat(vipNames);
 
             return chatterNames ?? [];
         }
