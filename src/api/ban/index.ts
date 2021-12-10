@@ -1,3 +1,4 @@
+/* eslint-disable no-use-before-define */
 import { post, get } from "$src/util/twitch/api";
 import logger from "$logger";
 import { UserInfo } from "$class/UserInfo";
@@ -16,27 +17,7 @@ export default async function ban(
     chatters: string[]
 ) {
     logger.warn(`Initiating the banning of all viewers on channel ${broadcasterId}`);
-    let userIds: string[]; // arr of user ids
-
-    // gets IDs of all users as they are required to ban them
-    const userParams = new Map();
-    const formattedUsers = chatters.join("&login=");
-    userParams.set("login", formattedUsers);
-    try {
-        logger.warn(`Fetching UserIDs of all viewers on channel ${broadcasterId}`);
-        const resp = await get("users", accessToken, userParams);
-        if (resp.status >= 200 && resp.status < 300) {
-            logger.info("Got new user info");
-            const result: { data: UserInfo[] } = resp.data;
-            userIds = result.data.map((user) => user.id);
-        } else {
-            logger.warn("Failed to get user info!");
-            return;
-        }
-    } catch (err) {
-        logger.error(err);
-        return;
-    }
+    const userIds = await getUserIds(broadcasterId, accessToken, chatters);
 
     const urlParams = new Map();
     urlParams.set("broadcaster_id", broadcasterId);
@@ -50,14 +31,39 @@ export default async function ban(
         return userBan;
     });
 
+    const stringified = JSON.stringify({ data: body });
+    console.log(stringified);
+
     logger.warn(`Banning all viewers on channel ${broadcasterId}`);
     try {
-        const resp = await post("moderation/bans", JSON.stringify(body), accessToken, urlParams);
+        const resp = await post("moderation/bans", stringified, accessToken, urlParams);
 
         if (resp.status >= 200 && resp.status < 300) {
-            logger.warn("Viewers have been succesfully banned");
+            logger.warn(`Viewers have been succesfully banned for ${broadcasterId}`);
         }
-    } catch (error) {
-        logger.error(error);
+    } catch (error: any) {
+        logger.error(error.message);
+    }
+}
+
+async function getUserIds(broadcasterId: string, accessToken: string, chatters: string[]) {
+    // gets IDs of all users as they are required to ban them
+    const userParams = new Map();
+    const formattedUsers = chatters.join("&login=");
+    userParams.set("login", formattedUsers);
+    try {
+        logger.warn(`Fetching UserIDs of all viewers on channel ${broadcasterId}`);
+        const resp = await get("users", accessToken, userParams);
+        if (resp.status >= 200 && resp.status < 300) {
+            logger.info("Got new user info");
+            const result: { data: UserInfo[] } = resp.data;
+            return result.data.map((user) => user.id);
+        }
+
+        logger.warn("Failed to get user info!");
+        return [];
+    } catch (err) {
+        logger.error(err);
+        return [];
     }
 }

@@ -8,8 +8,8 @@ import Datastore from "nedb";
 import logger from "$logger";
 import { User } from "$class/User";
 import { BanToken } from "$class/BanToken";
-// import ban from "$src/api/ban/index";
-// import getChatters from "$src/api/chatters/index";
+import nukeChat from "$src/api/ban/index";
+import getChatters from "$src/api/chatters/index";
 
 type BanRequest = {
     userToBan: string;
@@ -42,6 +42,8 @@ export default class ChatBotClient extends EventEmitter {
 
     private owner: string;
 
+    private ownerId: string;
+
     private db: Datastore;
 
     private banTokenExpireTime: number; // seconds
@@ -51,6 +53,8 @@ export default class ChatBotClient extends EventEmitter {
     private numOfGiftedSubs: number;
 
     private accessToken: string;
+
+    private isChatNuked = false;
 
     timeoutTime; // seconds
 
@@ -64,6 +68,7 @@ export default class ChatBotClient extends EventEmitter {
         super();
         this.whitelist = ["moobot", "nightbot", "cokakoala", user.login];
         this.owner = user.login;
+        this.ownerId = user.userId;
         this.client = new tmi.Client({
             options: { debug: true },
             connection: {
@@ -83,8 +88,7 @@ export default class ChatBotClient extends EventEmitter {
         this.bitTarget = user.bitTarget;
         this.message = user.message;
         this.banTokenExpireTime = user.tokenExpireTime;
-
-        this.numOfGiftedSubs = 5;
+        this.numOfGiftedSubs = user.numOfGiftedSubs;
 
         this.db = new Datastore({
             filename: `./data/ban-tokens/${this.owner}.db`,
@@ -515,13 +519,25 @@ export default class ChatBotClient extends EventEmitter {
             }
             case "rob": {
                 const userToRemoveTokens = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
+                if (!userToRemoveTokens)
+                    client
+                        .say(channel, `You need to tag a user with an @. For example: !b2b rob @username`)
+                        .catch((er) => logger.error(er));
+
                 this.db.remove({ login: userToRemoveTokens }, { multi: true }, (err: Error | null, n: number) => {
                     if (err) logger.error(err);
                     else {
                         logger.info(`[ROBBED] [${channel}] ${userToRemoveTokens} has had all of their tokens REMOVED!`);
-                        client.say(channel, `@${userToRemoveTokens} has lost all ${n} of their ban tokens`);
+                        client
+                            .say(channel, `@${userToRemoveTokens} has lost all ${n} of their ban tokens`)
+                            .catch((er) => logger.error(er));
                     }
                 });
+                break;
+            }
+            case "nukechat": {
+                if (!username) return;
+                this.nukeChat(this.client, channel, username);
                 break;
             }
             default:
@@ -698,12 +714,14 @@ export default class ChatBotClient extends EventEmitter {
         });
     }
 
-    private async nukeChat(client: Client, channel: string) {
+    private async nukeChat(client: Client, channel: string, bomber: string) {
         try {
-            const mods = await client.mods(channel);
-            const chatters = [];
-        } catch (error) {
-            logger.error(error);
+            const chatters = await getChatters(this.owner);
+            console.log(chatters);
+            const reason = `Tatically nuked by ${bomber}`;
+            await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters);
+        } catch (err) {
+            logger.error(err);
         }
     }
 }
