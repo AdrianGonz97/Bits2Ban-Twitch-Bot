@@ -150,17 +150,9 @@ export default class ChatBotClient extends EventEmitter {
                 } else {
                     if (numOfTokens === 0) return;
                     this.addBanToken(banRequester, numOfTokens);
-                    setTimeout(
-                        (client, chan, user, num) =>
-                            client
-                                .say(chan, `@${user} You have received ${num} ban tokens!`)
-                                .catch((err) => logger.error(err)),
-                        3000,
-                        this.client,
-                        channel,
-                        banRequester,
-                        numOfTokens
-                    );
+                    this.client
+                        .say(channel, `@${banRequester} You have received ${numOfTokens} ban tokens!`)
+                        .catch((err) => logger.error(err));
 
                     logger.warn(`[${channel}] No username was tagged in ${userstate.username}'s message`);
                 }
@@ -218,9 +210,18 @@ export default class ChatBotClient extends EventEmitter {
             if (numOfSubsGifted >= this.numOfGiftedSubs && gifterLogin) {
                 const numOfTokens = Math.floor(numOfSubsGifted / this.numOfGiftedSubs);
                 this.addBanToken(gifterLogin, numOfTokens);
-                this.client
-                    .say(channel, `@${username} You have received ${numOfTokens} ban tokens!`)
-                    .catch((err) => logger.error(err));
+                // slight delay added to notify msg so the msg doesn't get hidden by the automated msgs that say who recieved the subs in the chat
+                setTimeout(
+                    (client, chan, user, num) =>
+                        client
+                            .say(chan, `@${user} You have received ${num} ban tokens!`)
+                            .catch((err) => logger.error(err)),
+                    2000,
+                    this.client,
+                    channel,
+                    gifterLogin,
+                    numOfTokens
+                );
             }
         });
 
@@ -249,7 +250,11 @@ export default class ChatBotClient extends EventEmitter {
                     channel,
                     `${count + 1}x UNO REVERSE CARD for ${time} seconds, any final words, @${userToBan}?`
                 );
-            else await this.client.say(channel, `@${userToBan} do you have any final words?`);
+            else
+                await this.client.say(
+                    channel,
+                    `@${userToBan} do you have any final words? If you have a ban token, you can type "!uno" to send the ban right back to ${banRequester}, or you can cheer ${this.bitTarget} bits.`
+                );
 
             const timeout = setTimeout(
                 async () => {
