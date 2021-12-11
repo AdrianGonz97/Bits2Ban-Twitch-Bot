@@ -9,6 +9,13 @@ type ChatterBan = {
     reason: string;
 };
 
+type BanResp = {
+    broadcaster_id: string;
+    moderator_id: string;
+    user_id: string;
+    end_time: string;
+};
+
 export default async function ban(
     accessToken: string,
     broadcasterId: string,
@@ -18,7 +25,8 @@ export default async function ban(
 ) {
     logger.warn(`Initiating the banning of all viewers on channel ${broadcasterId}`);
     const segmentedUserIds = await getUserIds(broadcasterId, accessToken, chatters);
-    await banUsers(segmentedUserIds, accessToken, broadcasterId, duration, reason);
+    const count = await banUsers(segmentedUserIds, accessToken, broadcasterId, duration, reason);
+    return count;
 }
 
 async function getUserIds(broadcasterId: string, accessToken: string, chatters: string[]) {
@@ -33,22 +41,29 @@ async function getUserIds(broadcasterId: string, accessToken: string, chatters: 
         return get("users", accessToken, userParams);
     });
 
+    let count = 0;
     try {
-        const results = await Promise.all(promises);
+        const results = await Promise.allSettled(promises);
 
-        const segmentedUserIds = results.map((resp) => {
-            if (resp.status >= 200 && resp.status < 300) {
-                logger.info("Got new user info");
-                const result: { data: UserInfo[] } = resp.data;
-                return result.data.map((user) => user.id);
-            }
-            logger.warn("Failed to get user info!");
+        const segmentedUserIds = results.map((promise) => {
+            if (promise.status === "fulfilled") {
+                const resp = promise.value;
+                if (resp.status >= 200 && resp.status < 300) {
+                    const result: { data: UserInfo[] } = resp.data;
+                    count += result.data.length;
+                    logger.info(`SUCCESSFULLY got user info for ${result.data.length} chatters`);
+                    return result.data.map((user) => user.id);
+                }
+                logger.error("Failed to get user info!");
+            } else logger.error(promise.reason);
             return [];
         });
 
+        logger.info(`TOTAL chatters ${count} chatters`);
         return segmentedUserIds;
     } catch (err: any) {
         logger.error(err.message);
+        logger.info(`TOTAL chatters ${count} chatters`);
         return [];
     }
 }
@@ -60,6 +75,7 @@ async function banUsers(
     duration: number,
     reason: string
 ) {
+    let count = 0;
     logger.warn(`Banning all viewers on channel ${broadcasterId}`);
 
     const urlParams = new Map();
@@ -81,17 +97,26 @@ async function banUsers(
     });
 
     try {
-        const results = await Promise.all(promises);
-        results.forEach((resp) => {
-            if (resp.status >= 200 && resp.status < 300) {
-                logger.warn(`Viewers have been succesfully banned for ${broadcasterId}`);
-            } else logger.error(`FAILED to ban users for ${broadcasterId}`);
+        const results = await Promise.allSettled(promises);
+        results.forEach((promise) => {
+            if (promise.status === "fulfilled") {
+                const resp = promise.value;
+                console.log(resp.headers);
+                if (resp.status >= 200 && resp.status < 300) {
+                    const result: { data: BanResp[]; errors: string[] } = resp.data;
+                    count += result.data.length;
+                    logger.warn(`SUCCESSFULLY banned ${result.data.length} viewers for ${broadcasterId}`);
+                    result.errors.forEach((err) => logger.error(err));
+                } else logger.error(`FAILED to ban users for ${broadcasterId}`);
+            } else logger.error(promise.reason);
         });
     } catch (err: any) {
         logger.error(err.message);
     }
+    return count;
 }
 
+// returns an array of string arrays that are segmented into a given num of elements
 function segmentArray(elementsPerArr: number, arr: string[]) {
     const listOfArrs: string[][] = [];
     for (let i = 0; i < arr.length; i += elementsPerArr) {

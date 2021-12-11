@@ -721,11 +721,12 @@ export default class ChatBotClient extends EventEmitter {
 
     private async nukeChat(client: Client, channel: string, bomber: string) {
         try {
-            const chatters = await getChatters("frostprime_");
-            // const chatters = await getChatters(this.owner);
-            console.log(chatters);
+            const chatters = await getChatters(this.owner);
             const reason = `Tatically nuked by ${bomber}`;
-            await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters);
+            const count = await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters);
+            client
+                .say(channel, `${count} out of ${chatters.length} users have been banned.`)
+                .catch((err) => logger.error(err));
         } catch (err) {
             logger.error(err);
         }
