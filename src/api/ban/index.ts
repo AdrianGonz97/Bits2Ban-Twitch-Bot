@@ -25,6 +25,7 @@ export default async function ban(
 ) {
     logger.warn(`Initiating the banning of all viewers on channel ${broadcasterId}`);
     const segmentedUserIds = await getUserIds(broadcasterId, accessToken, chatters);
+    await sleep(1000 * 5);
     const count = await banUsers(segmentedUserIds, accessToken, broadcasterId, duration, reason);
     return count;
 }
@@ -59,11 +60,10 @@ async function getUserIds(broadcasterId: string, accessToken: string, chatters: 
             return [];
         });
 
-        logger.info(`TOTAL chatters ${count} chatters`);
+        logger.info(`SUCCESSFULLY acquired the user info of ${count} chatters for ${broadcasterId}`);
         return segmentedUserIds;
     } catch (err: any) {
         logger.error(err.message);
-        logger.info(`TOTAL chatters ${count} chatters`);
         return [];
     }
 }
@@ -124,4 +124,9 @@ function segmentArray(elementsPerArr: number, arr: string[]) {
         listOfArrs.push(list);
     }
     return listOfArrs;
+}
+
+function sleep(ms: number) {
+    // eslint-disable-next-line no-promise-executor-return
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }

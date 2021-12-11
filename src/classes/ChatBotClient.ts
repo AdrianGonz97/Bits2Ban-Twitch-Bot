@@ -722,6 +722,13 @@ export default class ChatBotClient extends EventEmitter {
     private async nukeChat(client: Client, channel: string, bomber: string) {
         try {
             const chatters = await getChatters(this.owner);
+            client
+                .say(
+                    channel,
+                    `Tatical nuke inbound. Attempting to ban ${chatters.length} viewers for ${this.timeoutTime} seconds. Dropping in...`
+                )
+                .catch((err) => logger.error(err));
+            await ChatBotClient.nukeCountDown(client, channel);
             const reason = `Tatically nuked by ${bomber}`;
             const count = await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters);
             client
@@ -730,5 +737,19 @@ export default class ChatBotClient extends EventEmitter {
         } catch (err) {
             logger.error(err);
         }
+    }
+
+    static nukeCountDown(client: Client, channel: string) {
+        let count = 5;
+        return new Promise((resolve) => {
+            const interval = setInterval(() => {
+                if (count === 1) {
+                    clearInterval(interval);
+                    resolve(0);
+                }
+                client.say(channel, `${count}...`).catch((err) => logger.error(err));
+                count -= 1;
+            }, 1000);
+        });
     }
 }
