@@ -721,7 +721,8 @@ export default class ChatBotClient extends EventEmitter {
 
     private async nukeChat(client: Client, channel: string, bomber: string) {
         try {
-            const chatters = await getChatters(this.owner);
+            const chatters = await getChatters("frostprime_");
+            // const chatters = await getChatters(this.owner);
             console.log(chatters);
             const reason = `Tatically nuked by ${bomber}`;
             await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters);
