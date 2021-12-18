@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 /* eslint-disable no-use-before-define */
 import { post, get } from "$src/util/twitch/api";
 import logger from "$logger";
@@ -68,7 +69,7 @@ async function getUserIds(broadcasterId: string, accessToken: string, chatters: 
     }
 }
 
-async function banUsers(
+async function bulkBanUsers(
     segmentedUserIds: string[][],
     accessToken: string,
     broadcasterId: string,
@@ -116,6 +117,55 @@ async function banUsers(
     return count;
 }
 
+async function banUsers(
+    segmentedUserIds: string[][],
+    accessToken: string,
+    broadcasterId: string,
+    duration: number,
+    reason: string
+) {
+    let count = 0;
+    logger.warn(`Banning all viewers on channel ${broadcasterId}`);
+
+    const urlParams = new Map();
+    urlParams.set("broadcaster_id", broadcasterId);
+    urlParams.set("moderator_id", broadcasterId);
+
+    const userIds = scrambleArray(segmentedUserIds.flat());
+    const promises = userIds.map(async (id, index) => {
+        // if (index > 800) return;
+
+        const userBan: ChatterBan = {
+            user_id: id,
+            duration,
+            reason,
+        };
+
+        const stringified = JSON.stringify({ data: userBan });
+        await sleep(200 * index);
+
+        return post("moderation/bans", stringified, accessToken, urlParams);
+    });
+
+    try {
+        const results = await Promise.allSettled(promises);
+        results.forEach((promise) => {
+            if (promise.status === "fulfilled") {
+                const resp = promise.value;
+                console.log(resp.headers);
+                if (resp.status >= 200 && resp.status < 300) {
+                    // const result: { data: BanResp[] } = resp.data;
+                    count += 1;
+                } else logger.error(`FAILED to ban users for ${broadcasterId}`);
+            } else logger.error(promise.reason);
+        });
+    } catch (err: any) {
+        logger.error(err.message);
+    }
+    logger.info(`SUCCESSFULLY banned ${count} viewers for ${broadcasterId}`);
+    return count;
+}
+
 // returns an array of string arrays that are segmented into a given num of elements
 function segmentArray(elementsPerArr: number, arr: string[]) {
     const listOfArrs: string[][] = [];
@@ -129,4 +179,15 @@ function segmentArray(elementsPerArr: number, arr: string[]) {
 function sleep(ms: number) {
     // eslint-disable-next-line no-promise-executor-return
     return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// shuffling an array: https://stackoverflow.com/questions/1519736/random-shuffling-of-an-array
+function scrambleArray(arr: string[]) {
+    for (let i = 0; i < arr.length; i++) {
+        const index = Math.floor(Math.random() * arr.length);
+        const temp = arr[index];
+        arr[index] = arr[i];
+        arr[i] = temp;
+    }
+    return arr;
 }
