@@ -10,12 +10,12 @@ type ChatterBan = {
     reason: string;
 };
 
-type BanResp = {
-    broadcaster_id: string;
-    moderator_id: string;
-    user_id: string;
-    end_time: string;
-};
+// type BanResp = {
+//     broadcaster_id: string;
+//     moderator_id: string;
+//     user_id: string;
+//     end_time: string;
+// };
 
 export default async function ban(
     accessToken: string,
@@ -69,7 +69,7 @@ async function getUserIds(broadcasterId: string, accessToken: string, chatters: 
     }
 }
 
-async function bulkBanUsers(
+/* async function bulkBanUsers(
     segmentedUserIds: string[][],
     accessToken: string,
     broadcasterId: string,
@@ -115,7 +115,7 @@ async function bulkBanUsers(
         logger.error(err.message);
     }
     return count;
-}
+} */
 
 async function banUsers(
     segmentedUserIds: string[][],
@@ -133,8 +133,6 @@ async function banUsers(
 
     const userIds = scrambleArray(segmentedUserIds.flat());
     const promises = userIds.map(async (id, index) => {
-        // if (index > 800) return;
-
         const userBan: ChatterBan = {
             user_id: id,
             duration,

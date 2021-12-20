@@ -56,6 +56,8 @@ export default class ChatBotClient extends EventEmitter {
 
     private isChatNuked = false;
 
+    private nukeEndTime = 0;
+
     timeoutTime; // seconds
 
     bitTarget; // bits
@@ -161,6 +163,13 @@ export default class ChatBotClient extends EventEmitter {
 
         this.client.on("message", (channel, tags, message) => {
             const username = tags.username?.toLowerCase();
+            if (!username) return;
+            if (this.isChatNuked && !tags.mod && username !== this.owner) {
+                // check if user is a mod, if not ban them for the remaining time
+                const banTime = Math.floor((this.nukeEndTime - Date.now()) / 1000);
+                this.client.timeout(channel, username, banTime, "nuked").catch((err) => logger.error(err));
+                return;
+            }
             if (message[0] === "!") {
                 const args: string[] = message.split(" ");
                 const cmd = args.shift()?.replace("!", "");
@@ -174,13 +183,11 @@ export default class ChatBotClient extends EventEmitter {
                         break;
                     case "uno": {
                         // users can uno reverse card a ban if they have a ban token
-                        if (!username) break;
                         const banRequest = this.banQueue.find((request) => request.userToBan === username);
                         this.unoCommand(banRequest, username, channel, this.client);
                         break;
                     }
                     case "ban": {
-                        if (!username) return;
                         const userToBan = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
                         if (userToBan) this.banCommand(username, userToBan, channel, this.client);
                         else
@@ -191,7 +198,6 @@ export default class ChatBotClient extends EventEmitter {
                     }
                     case "balance":
                     case "tokens": {
-                        if (!username) break;
                         this.tokensCommand(username, channel, this.client);
                         break;
                     }
@@ -512,6 +518,7 @@ export default class ChatBotClient extends EventEmitter {
                 if (!username) return;
                 const userToGiveToken = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
                 if (userToGiveToken) {
+                    // add argument for # of tokens to give
                     this.addBanToken(userToGiveToken, 1);
                     this.client
                         .say(channel, `A ban token has been given to @${userToGiveToken}`)
@@ -542,7 +549,7 @@ export default class ChatBotClient extends EventEmitter {
             }
             case "nukechat": {
                 if (!username) return;
-                this.nukeChat(this.client, channel, username);
+                this.nukeChat(this.client, channel, username, args.shift());
                 break;
             }
             default:
@@ -719,17 +726,26 @@ export default class ChatBotClient extends EventEmitter {
         });
     }
 
-    private async nukeChat(client: Client, channel: string, bomber: string) {
+    private async nukeChat(client: Client, channel: string, bomber: string, broadcaster?: string) {
+        if (this.timeoutTime === 0) return;
         try {
-            const chatters = await getChatters(this.owner);
+            // const chatters = await getChatters(this.owner);
+            const chatters = await getChatters(broadcaster ?? this.owner);
             client
                 .say(
                     channel,
-                    `Tatical nuke inbound. Attempting to ban ${chatters.length} viewers for ${this.timeoutTime} seconds. Dropping in...`
+                    `Tactical nuke inbound. Banning ${chatters.length} viewers for ${this.timeoutTime} seconds. Dropping in...`
                 )
                 .catch((err) => logger.error(err));
             await ChatBotClient.nukeCountDown(client, channel);
-            const reason = `Tatically nuked by ${bomber}`;
+
+            this.nukeEndTime = Date.now() + this.timeoutTime * 1000;
+            this.isChatNuked = true;
+            setTimeout(() => {
+                this.isChatNuked = false;
+            }, this.timeoutTime * 1000);
+
+            const reason = `Tactically nuked by ${bomber}`;
             const count = await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters);
             client
                 .say(channel, `${count} out of ${chatters.length} users have been banned.`)
