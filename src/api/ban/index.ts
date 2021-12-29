@@ -26,7 +26,7 @@ export default async function ban(
 ) {
     logger.warn(`Initiating the banning of all viewers on channel ${broadcasterId}`);
     const segmentedUserIds = await getUserIds(broadcasterId, accessToken, chatters);
-    await sleep(1000 * 5);
+    await sleep(1000); // 1 sec delay
     const count = await banUsers(segmentedUserIds, accessToken, broadcasterId, duration, reason);
     return count;
 }
