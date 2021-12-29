@@ -271,7 +271,6 @@ export default class ChatBotClient extends EventEmitter {
                             time,
                             `Timed out for bits - requested by ${banRequester}`
                         );
-                        await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
                         logger.warn(`[TIMEOUT] [${channel}]: <${userToBan}>`);
 
                         // if a mod was banned..
@@ -280,13 +279,14 @@ export default class ChatBotClient extends EventEmitter {
                             this.remodAfterBan(channel, userToBan, time);
                         } else if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
 
-                        // remove the ban from the list after timeout
-                        this.banQueue = this.banQueue.filter(
-                            (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
-                        );
+                        await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
                     } catch (err) {
                         logger.error(err);
                     }
+                    // remove the ban from the queue after timeout
+                    this.banQueue = this.banQueue.filter(
+                        (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
+                    );
                 },
                 isUno ? 60000 : 25000
             );
@@ -549,7 +549,10 @@ export default class ChatBotClient extends EventEmitter {
             }
             case "nukechat": {
                 if (!username) return;
-                this.nukeChat(this.client, channel, username, args.shift());
+                const chan = args.shift();
+                if (chan) this.nukeChat(this.client, channel, username, chan);
+                else this.nukeChat(this.client, channel, username, this.owner);
+
                 break;
             }
             default:
@@ -748,7 +751,7 @@ export default class ChatBotClient extends EventEmitter {
             const reason = `Tactically nuked by ${bomber}`;
             const count = await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters);
             client
-                .say(channel, `${count} out of ${chatters.length} users have been banned.`)
+                .say(channel, `${count} out of ${chatters.length} chatters were nuked.`)
                 .catch((err) => logger.error(err));
         } catch (err) {
             logger.error(err);
