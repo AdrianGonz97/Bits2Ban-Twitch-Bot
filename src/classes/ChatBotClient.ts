@@ -11,6 +11,8 @@ import { BanToken } from "$class/BanToken";
 import nukeChat from "$src/api/ban/index";
 import getChatters from "$src/api/chatters/index";
 
+// TODO: Add version number
+
 type BanRequest = {
     userToBan: string;
     banRequester: string;
@@ -222,7 +224,7 @@ export default class ChatBotClient extends EventEmitter {
                         client
                             .say(chan, `@${user} You have received ${num} ban tokens!`)
                             .catch((err) => logger.error(err)),
-                    2000,
+                    5000,
                     this.client,
                     channel,
                     gifterLogin,
@@ -259,7 +261,7 @@ export default class ChatBotClient extends EventEmitter {
             else
                 await this.client.say(
                     channel,
-                    `@${userToBan} do you have any final words? If you have a ban token, you can type "!uno" to send the ban right back to ${banRequester}, or you can cheer ${this.bitTarget} bits.`
+                    `@${userToBan} do you have any final words? If you have a ban token, you can type "!uno" to send the ban right back to @${banRequester}, or you can cheer ${this.bitTarget} bits.`
                 );
 
             const timeout = setTimeout(
