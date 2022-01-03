@@ -133,9 +133,10 @@ async function banUsers(
 
     const userIds = scrambleArray(segmentedUserIds.flat());
     const promises = userIds.map(async (id, index) => {
+        const banTime = Math.floor((duration * 1000 - 200 * index) / 1000);
         const userBan: ChatterBan = {
             user_id: id,
-            duration,
+            duration: banTime,
             reason,
         };
 
