@@ -517,12 +517,19 @@ export default class ChatBotClient extends EventEmitter {
             case "give": {
                 if (!username) return;
                 const userToGiveToken = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
+                args.shift(); // shifts to get the num of tokens next
                 if (userToGiveToken) {
-                    // add argument for # of tokens to give
-                    this.addBanToken(userToGiveToken, 1);
-                    this.client
-                        .say(channel, `A ban token has been given to @${userToGiveToken}`)
-                        .catch((err) => logger.error(err));
+                    const numOfTokens = args.shift();
+                    if (!isNaN(numOfTokens) && parseInt(numOfTokens) <= 100 && parseInt(numOfTokens) >= 1) {
+                        this.addBanToken(userToGiveToken, parseInt(numOfTokens));
+                        this.client
+                            .say(channel, `A ban token has been given to @${userToGiveToken}`)
+                            .catch((err) => logger.error(err));
+                    } else {
+                        this.client
+                            .say(channel, `Invalid number of tokens to give. Must be within the range of [1 - 100]`)
+                            .catch((err) => logger.error(err));
+                    }
                 } else
                     this.client
                         .say(channel, `@${username} you must tag the user you want to give a token to!`)
@@ -547,7 +554,7 @@ export default class ChatBotClient extends EventEmitter {
                 });
                 break;
             }
-            case "nukechat": {
+            case "nuke": {
                 if (!username) return;
                 const chan = args.shift();
                 if (chan) this.nukeChat(this.client, channel, username, chan);
