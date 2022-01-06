@@ -754,7 +754,11 @@ export default class ChatBotClient extends EventEmitter {
     private async nukeChat(client: Client, channel: string, bomber: string, broadcaster?: string) {
         if (this.timeoutTime === 0) return;
         try {
-            // const chatters = await getChatters(this.owner);
+            // refreshes access token
+            const user = await refresh(this.user);
+            if (!user) return;
+            this.accessToken = user.access_token;
+
             const chatters = await getChatters(broadcaster ?? this.owner);
             client
                 .say(
