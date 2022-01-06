@@ -13,8 +13,6 @@ import getChatters from "$src/api/chatters/index";
 import refresh from "$src/api/oauth/refresh/index";
 
 // TODO: Add version number
-// TODO: Refresh access token when nuke
-// TODO: Settings command to see what is set
 // TODO: add time ban length time on ban message
 // TODO: Scoreboard
 // TODO: EMOTE ONLY JAIL
@@ -63,6 +61,8 @@ export default class ChatBotClient extends EventEmitter {
     private numOfGiftedSubs: number;
 
     private accessToken: string;
+
+    // private nukeTime: number;
 
     private isChatNuked = false;
 
@@ -293,6 +293,8 @@ export default class ChatBotClient extends EventEmitter {
                         await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
                     } catch (err) {
                         logger.error(err);
+                        // failed to ban? reload access token
+                        this.reloadBot();
                     }
                     // remove the ban from the queue after timeout
                     this.banQueue = this.banQueue.filter(
@@ -577,9 +579,21 @@ export default class ChatBotClient extends EventEmitter {
                 this.reloadBot();
                 break;
             }
+            case "settings": {
+                client
+                    .say(
+                        channel,
+                        `Timeout Time: ${this.timeoutTime}s | Bit Target: ${this.bitTarget} | Gifted Subs: ${this.numOfGiftedSubs} | Ban Msg: "${this.message}" | Token Expiration: ${this.banTokenExpireTime}s`
+                    )
+                    .catch((er) => logger.error(er));
+                break;
+            }
             default:
                 client
-                    .say(channel, "Usage: !b2b [msg | cost | time | expire | gifts | rob | give] [args]")
+                    .say(
+                        channel,
+                        "Usage: !b2b [msg | cost | time | expire | gifts | rob | give | nuke | reload | settings] [args]"
+                    )
                     .catch((err) => logger.error(err));
                 break;
         }
