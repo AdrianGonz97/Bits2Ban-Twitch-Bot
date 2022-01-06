@@ -13,7 +13,6 @@ import getChatters from "$src/api/chatters/index";
 import refresh from "$src/api/oauth/refresh/index";
 
 // TODO: Add version number
-// TODO: add time ban length time on ban message
 // TODO: Scoreboard
 // TODO: EMOTE ONLY JAIL
 
@@ -290,7 +289,10 @@ export default class ChatBotClient extends EventEmitter {
                             this.remodAfterBan(channel, userToBan, time);
                         } else if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
 
-                        await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
+                        await this.client.say(
+                            channel,
+                            `@${userToBan} ${this.message} @${banRequester} for ${time} seconds`
+                        );
                     } catch (err) {
                         logger.error(err);
                         // failed to ban? reload access token
