@@ -10,8 +10,14 @@ import { User } from "$class/User";
 import { BanToken } from "$class/BanToken";
 import nukeChat from "$src/api/ban/index";
 import getChatters from "$src/api/chatters/index";
+import refresh from "$src/api/oauth/refresh/index";
 
 // TODO: Add version number
+// TODO: Refresh access token when nuke
+// TODO: Settings command to see what is set
+// TODO: add time ban length time on ban message
+// TODO: Scoreboard
+// TODO: EMOTE ONLY JAIL
 
 type BanRequest = {
     userToBan: string;
@@ -35,6 +41,8 @@ type AntiSpamTimeouts = {
 const timer = 45 * 1000; // 45 sec timer to prevent cmd spam
 export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
+
+    private user: User;
 
     private banQueue: Array<BanRequest> = [];
 
@@ -71,6 +79,7 @@ export default class ChatBotClient extends EventEmitter {
     constructor(user: User) {
         super();
         this.whitelist = ["moobot", "nightbot", "cokakoala", user.login];
+        this.user = user;
         this.owner = user.login;
         this.ownerId = user.userId;
         this.client = new tmi.Client({
@@ -564,6 +573,10 @@ export default class ChatBotClient extends EventEmitter {
 
                 break;
             }
+            case "reload": {
+                this.reloadBot();
+                break;
+            }
             default:
                 client
                     .say(channel, "Usage: !b2b [msg | cost | time | expire | gifts | rob | give] [args]")
@@ -779,5 +792,37 @@ export default class ChatBotClient extends EventEmitter {
                 count -= 1;
             }, 1000);
         });
+    }
+
+    private async reloadBot() {
+        try {
+            await this.client.disconnect();
+
+            // get new access token
+            const user = await refresh(this.user);
+            if (!user) return;
+
+            this.accessToken = user.access_token;
+
+            this.client = new tmi.Client({
+                options: { debug: true },
+                connection: {
+                    reconnect: true,
+                    secure: true,
+                },
+                identity: {
+                    username: this.owner,
+                    password: this.accessToken,
+                },
+                channels: [this.owner],
+                logger,
+            });
+
+            this.setEvents();
+
+            this.start();
+        } catch (err) {
+            logger.error(err);
+        }
     }
 }
