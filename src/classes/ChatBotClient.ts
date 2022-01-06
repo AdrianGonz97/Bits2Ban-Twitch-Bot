@@ -245,6 +245,7 @@ export default class ChatBotClient extends EventEmitter {
             logger.info(`Connected to ${this.owner}'s channel`);
             ChatBotClient.clients.set(this.owner, this);
             logger.warn(`Number of clients connected: ${ChatBotClient.clients.size}`);
+            this.client.say(`#${this.owner}`, `B2B Chatbot connected.`).catch((err) => logger.error(err));
         });
 
         this.client.on("disconnected", (reason: string) => {
@@ -538,7 +539,7 @@ export default class ChatBotClient extends EventEmitter {
                     if (!isNaN(numOfTokens) && parseInt(numOfTokens) <= 100 && parseInt(numOfTokens) >= 1) {
                         this.addBanToken(userToGiveToken, parseInt(numOfTokens));
                         this.client
-                            .say(channel, `A ban token has been given to @${userToGiveToken}`)
+                            .say(channel, `${numOfTokens} ban tokens have been given to @${userToGiveToken}`)
                             .catch((err) => logger.error(err));
                     } else {
                         this.client
@@ -578,6 +579,7 @@ export default class ChatBotClient extends EventEmitter {
                 break;
             }
             case "reload": {
+                this.client.say(channel, `Reloading B2B Chatbot...`).catch((err) => logger.error(err));
                 this.reloadBot();
                 break;
             }

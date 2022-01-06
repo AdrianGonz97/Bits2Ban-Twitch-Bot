@@ -151,7 +151,7 @@ async function banUsers(
         results.forEach((promise) => {
             if (promise.status === "fulfilled") {
                 const resp = promise.value;
-                console.log(resp.headers);
+                // console.log(resp.headers);
                 if (resp.status >= 200 && resp.status < 300) {
                     // const result: { data: BanResp[] } = resp.data;
                     count += 1;
