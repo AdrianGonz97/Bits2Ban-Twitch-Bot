@@ -23,6 +23,7 @@ module.exports = {
         "import/extensions": "off",
         "import/no-unresolved": "error",
         "no-console": "off",
+        "no-plusplus": "off",
         "import/order": [
             "error",
             {

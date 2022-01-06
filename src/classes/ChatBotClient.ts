@@ -8,6 +8,13 @@ import Datastore from "nedb";
 import logger from "$logger";
 import { User } from "$class/User";
 import { BanToken } from "$class/BanToken";
+import nukeChat from "$src/api/ban/index";
+import getChatters from "$src/api/chatters/index";
+import refresh from "$src/api/oauth/refresh/index";
+
+// TODO: Add version number
+// TODO: Scoreboard
+// TODO: EMOTE ONLY JAIL
 
 type BanRequest = {
     userToBan: string;
@@ -32,6 +39,8 @@ const timer = 45 * 1000; // 45 sec timer to prevent cmd spam
 export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
 
+    private user: User;
+
     private banQueue: Array<BanRequest> = [];
 
     private bannedMods: Array<Moderator> = [];
@@ -40,6 +49,8 @@ export default class ChatBotClient extends EventEmitter {
 
     private owner: string;
 
+    private ownerId: string;
+
     private db: Datastore;
 
     private banTokenExpireTime: number; // seconds
@@ -47,6 +58,14 @@ export default class ChatBotClient extends EventEmitter {
     private client: Client;
 
     private numOfGiftedSubs: number;
+
+    private accessToken: string;
+
+    // private nukeTime: number;
+
+    private isChatNuked = false;
+
+    private nukeEndTime = 0;
 
     timeoutTime; // seconds
 
@@ -59,7 +78,9 @@ export default class ChatBotClient extends EventEmitter {
     constructor(user: User) {
         super();
         this.whitelist = ["moobot", "nightbot", "cokakoala", user.login];
+        this.user = user;
         this.owner = user.login;
+        this.ownerId = user.userId;
         this.client = new tmi.Client({
             options: { debug: true },
             connection: {
@@ -73,13 +94,13 @@ export default class ChatBotClient extends EventEmitter {
             channels: [user.login],
             logger,
         });
+        this.accessToken = user.access_token;
         this.antiSpam = { code: false, how: false, war: false, tokens: false };
         this.timeoutTime = user.timeoutTime;
         this.bitTarget = user.bitTarget;
         this.message = user.message;
         this.banTokenExpireTime = user.tokenExpireTime;
-
-        this.numOfGiftedSubs = 5;
+        this.numOfGiftedSubs = user.numOfGiftedSubs;
 
         this.db = new Datastore({
             filename: `./data/ban-tokens/${this.owner}.db`,
@@ -141,17 +162,9 @@ export default class ChatBotClient extends EventEmitter {
                 } else {
                     if (numOfTokens === 0) return;
                     this.addBanToken(banRequester, numOfTokens);
-                    setTimeout(
-                        (client, chan, user, num) =>
-                            client
-                                .say(chan, `@${user} You have received ${num} ban tokens!`)
-                                .catch((err) => logger.error(err)),
-                        3000,
-                        this.client,
-                        channel,
-                        banRequester,
-                        numOfTokens
-                    );
+                    this.client
+                        .say(channel, `@${banRequester} You have received ${numOfTokens} ban tokens!`)
+                        .catch((err) => logger.error(err));
 
                     logger.warn(`[${channel}] No username was tagged in ${userstate.username}'s message`);
                 }
@@ -160,6 +173,13 @@ export default class ChatBotClient extends EventEmitter {
 
         this.client.on("message", (channel, tags, message) => {
             const username = tags.username?.toLowerCase();
+            if (!username) return;
+            if (this.isChatNuked && !tags.mod && username !== this.owner) {
+                // check if user is a mod, if not ban them for the remaining time
+                const banTime = Math.floor((this.nukeEndTime - Date.now()) / 1000);
+                this.client.timeout(channel, username, banTime, "nuked").catch((err) => logger.error(err));
+                return;
+            }
             if (message[0] === "!") {
                 const args: string[] = message.split(" ");
                 const cmd = args.shift()?.replace("!", "");
@@ -173,13 +193,11 @@ export default class ChatBotClient extends EventEmitter {
                         break;
                     case "uno": {
                         // users can uno reverse card a ban if they have a ban token
-                        if (!username) break;
                         const banRequest = this.banQueue.find((request) => request.userToBan === username);
                         this.unoCommand(banRequest, username, channel, this.client);
                         break;
                     }
                     case "ban": {
-                        if (!username) return;
                         const userToBan = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
                         if (userToBan) this.banCommand(username, userToBan, channel, this.client);
                         else
@@ -190,7 +208,6 @@ export default class ChatBotClient extends EventEmitter {
                     }
                     case "balance":
                     case "tokens": {
-                        if (!username) break;
                         this.tokensCommand(username, channel, this.client);
                         break;
                     }
@@ -209,9 +226,18 @@ export default class ChatBotClient extends EventEmitter {
             if (numOfSubsGifted >= this.numOfGiftedSubs && gifterLogin) {
                 const numOfTokens = Math.floor(numOfSubsGifted / this.numOfGiftedSubs);
                 this.addBanToken(gifterLogin, numOfTokens);
-                this.client
-                    .say(channel, `@${username} You have received ${numOfTokens} ban tokens!`)
-                    .catch((err) => logger.error(err));
+                // slight delay added to notify msg so the msg doesn't get hidden by the automated msgs that say who recieved the subs in the chat
+                setTimeout(
+                    (client, chan, user, num) =>
+                        client
+                            .say(chan, `@${user} You have received ${num} ban tokens!`)
+                            .catch((err) => logger.error(err)),
+                    5000,
+                    this.client,
+                    channel,
+                    gifterLogin,
+                    numOfTokens
+                );
             }
         });
 
@@ -219,6 +245,7 @@ export default class ChatBotClient extends EventEmitter {
             logger.info(`Connected to ${this.owner}'s channel`);
             ChatBotClient.clients.set(this.owner, this);
             logger.warn(`Number of clients connected: ${ChatBotClient.clients.size}`);
+            this.client.say(`#${this.owner}`, `B2B Chatbot connected.`).catch((err) => logger.error(err));
         });
 
         this.client.on("disconnected", (reason: string) => {
@@ -240,7 +267,11 @@ export default class ChatBotClient extends EventEmitter {
                     channel,
                     `${count + 1}x UNO REVERSE CARD for ${time} seconds, any final words, @${userToBan}?`
                 );
-            else await this.client.say(channel, `@${userToBan} do you have any final words?`);
+            else
+                await this.client.say(
+                    channel,
+                    `@${userToBan} do you have any final words? If you have a ban token, you can type "!uno" to send the ban right back to @${banRequester}, or you can cheer ${this.bitTarget} bits.`
+                );
 
             const timeout = setTimeout(
                 async () => {
@@ -251,7 +282,6 @@ export default class ChatBotClient extends EventEmitter {
                             time,
                             `Timed out for bits - requested by ${banRequester}`
                         );
-                        await this.client.say(channel, `@${userToBan} ${this.message} @${banRequester}`);
                         logger.warn(`[TIMEOUT] [${channel}]: <${userToBan}>`);
 
                         // if a mod was banned..
@@ -260,13 +290,19 @@ export default class ChatBotClient extends EventEmitter {
                             this.remodAfterBan(channel, userToBan, time);
                         } else if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
 
-                        // remove the ban from the list after timeout
-                        this.banQueue = this.banQueue.filter(
-                            (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
+                        await this.client.say(
+                            channel,
+                            `@${userToBan} ${this.message} @${banRequester} for ${time} seconds`
                         );
                     } catch (err) {
                         logger.error(err);
+                        // failed to ban? reload access token
+                        this.reloadBot();
                     }
+                    // remove the ban from the queue after timeout
+                    this.banQueue = this.banQueue.filter(
+                        (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
+                    );
                 },
                 isUno ? 60000 : 25000
             );
@@ -497,11 +533,19 @@ export default class ChatBotClient extends EventEmitter {
             case "give": {
                 if (!username) return;
                 const userToGiveToken = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
+                args.shift(); // shifts to get the num of tokens next
                 if (userToGiveToken) {
-                    this.addBanToken(userToGiveToken, 1);
-                    this.client
-                        .say(channel, `A ban token has been given to @${userToGiveToken}`)
-                        .catch((err) => logger.error(err));
+                    const numOfTokens = args.shift();
+                    if (!isNaN(numOfTokens) && parseInt(numOfTokens) <= 100 && parseInt(numOfTokens) >= 1) {
+                        this.addBanToken(userToGiveToken, parseInt(numOfTokens));
+                        this.client
+                            .say(channel, `${numOfTokens} ban tokens have been given to @${userToGiveToken}`)
+                            .catch((err) => logger.error(err));
+                    } else {
+                        this.client
+                            .say(channel, `Invalid number of tokens to give. Must be within the range of [1 - 100]`)
+                            .catch((err) => logger.error(err));
+                    }
                 } else
                     this.client
                         .say(channel, `@${username} you must tag the user you want to give a token to!`)
@@ -510,18 +554,50 @@ export default class ChatBotClient extends EventEmitter {
             }
             case "rob": {
                 const userToRemoveTokens = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
+                if (!userToRemoveTokens)
+                    client
+                        .say(channel, `You need to tag a user with an @. For example: !b2b rob @username`)
+                        .catch((er) => logger.error(er));
+
                 this.db.remove({ login: userToRemoveTokens }, { multi: true }, (err: Error | null, n: number) => {
                     if (err) logger.error(err);
                     else {
                         logger.info(`[ROBBED] [${channel}] ${userToRemoveTokens} has had all of their tokens REMOVED!`);
-                        client.say(channel, `@${userToRemoveTokens} has lost all ${n} of their ban tokens`);
+                        client
+                            .say(channel, `@${userToRemoveTokens} has lost all ${n} of their ban tokens`)
+                            .catch((er) => logger.error(er));
                     }
                 });
                 break;
             }
+            case "nuke": {
+                if (!username) return;
+                const chan = args.shift();
+                if (chan) this.nukeChat(this.client, channel, username, chan);
+                else this.nukeChat(this.client, channel, username, this.owner);
+
+                break;
+            }
+            case "reload": {
+                this.client.say(channel, `Reloading B2B Chatbot...`).catch((err) => logger.error(err));
+                this.reloadBot();
+                break;
+            }
+            case "settings": {
+                client
+                    .say(
+                        channel,
+                        `Timeout Time: ${this.timeoutTime}s | Bit Target: ${this.bitTarget} | Gifted Subs: ${this.numOfGiftedSubs} | Ban Msg: "${this.message}" | Token Expiration: ${this.banTokenExpireTime}s`
+                    )
+                    .catch((er) => logger.error(er));
+                break;
+            }
             default:
                 client
-                    .say(channel, "Usage: !b2b [msg | cost | time | expire | gifts | rob | give] [args]")
+                    .say(
+                        channel,
+                        "Usage: !b2b [msg | cost | time | expire | gifts | rob | give | nuke | reload | settings] [args]"
+                    )
                     .catch((err) => logger.error(err));
                 break;
         }
@@ -691,5 +767,84 @@ export default class ChatBotClient extends EventEmitter {
                     .catch((error) => logger.error(error));
             }
         });
+    }
+
+    private async nukeChat(client: Client, channel: string, bomber: string, broadcaster?: string) {
+        if (this.timeoutTime === 0) return;
+        try {
+            // refreshes access token
+            const user = await refresh(this.user);
+            if (!user) return;
+            this.accessToken = user.access_token;
+
+            const chatters = await getChatters(broadcaster ?? this.owner);
+            client
+                .say(
+                    channel,
+                    `Tactical nuke inbound. Banning ${chatters.length} viewers for ${this.timeoutTime} seconds. Dropping in...`
+                )
+                .catch((err) => logger.error(err));
+            await ChatBotClient.nukeCountDown(client, channel);
+
+            this.nukeEndTime = Date.now() + this.timeoutTime * 1000;
+            this.isChatNuked = true;
+            setTimeout(() => {
+                this.isChatNuked = false;
+            }, this.timeoutTime * 1000);
+
+            const reason = `Tactically nuked by ${bomber}`;
+            const count = await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters);
+            client
+                .say(channel, `${count} out of ${chatters.length} chatters were nuked.`)
+                .catch((err) => logger.error(err));
+        } catch (err) {
+            logger.error(err);
+        }
+    }
+
+    static nukeCountDown(client: Client, channel: string) {
+        let count = 5;
+        return new Promise((resolve) => {
+            const interval = setInterval(() => {
+                if (count === 1) {
+                    clearInterval(interval);
+                    resolve(0);
+                }
+                client.say(channel, `${count}...`).catch((err) => logger.error(err));
+                count -= 1;
+            }, 1000);
+        });
+    }
+
+    private async reloadBot() {
+        try {
+            await this.client.disconnect();
+
+            // get new access token
+            const user = await refresh(this.user);
+            if (!user) return;
+
+            this.accessToken = user.access_token;
+
+            this.client = new tmi.Client({
+                options: { debug: true },
+                connection: {
+                    reconnect: true,
+                    secure: true,
+                },
+                identity: {
+                    username: this.owner,
+                    password: this.accessToken,
+                },
+                channels: [this.owner],
+                logger,
+            });
+
+            this.setEvents();
+
+            this.start();
+        } catch (err) {
+            logger.error(err);
+        }
     }
 }

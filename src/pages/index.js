@@ -31,6 +31,7 @@ window.onload = async () => {
         "chat:edit",
         "whispers:read",
         "whispers:edit",
+        "moderator:manage:banned_users",
     ];
 
     window.localStorage.setItem("state", state);
