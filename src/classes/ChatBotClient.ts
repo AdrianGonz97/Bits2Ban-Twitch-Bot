@@ -578,6 +578,14 @@ export default class ChatBotClient extends EventEmitter {
 
                 break;
             }
+            case "snap": {
+                if (!username) return;
+                const chan = args.shift();
+                if (chan) this.nukeChat(this.client, channel, username, chan, true);
+                else this.nukeChat(this.client, channel, username, this.owner, true);
+
+                break;
+            }
             case "reload": {
                 this.client.say(channel, `Reloading B2B Chatbot...`).catch((err) => logger.error(err));
                 this.reloadBot();
@@ -769,7 +777,7 @@ export default class ChatBotClient extends EventEmitter {
         });
     }
 
-    private async nukeChat(client: Client, channel: string, bomber: string, broadcaster?: string) {
+    private async nukeChat(client: Client, channel: string, bomber: string, broadcaster?: string, snap = false) {
         if (this.timeoutTime === 0) return;
         try {
             // refreshes access token
@@ -778,25 +786,26 @@ export default class ChatBotClient extends EventEmitter {
             this.accessToken = user.access_token;
 
             const chatters = await getChatters(broadcaster ?? this.owner);
-            client
-                .say(
-                    channel,
-                    `Tactical nuke inbound. Banning ${chatters.length} viewers for ${this.timeoutTime} seconds. Dropping in...`
-                )
-                .catch((err) => logger.error(err));
+
+            const nukeMsg = snap
+                ? `I am inevitable... Wiping out ${Math.floor(chatters.length / 2)} viewers out of exisitence in...`
+                : `Tactical nuke inbound. Banning ${chatters.length} viewers for ${this.timeoutTime} seconds. Dropping in...`;
+            client.say(channel, nukeMsg).catch((err) => logger.error(err));
             await ChatBotClient.nukeCountDown(client, channel);
 
             this.nukeEndTime = Date.now() + this.timeoutTime * 1000;
-            this.isChatNuked = true;
+            this.isChatNuked = !snap;
             setTimeout(() => {
                 this.isChatNuked = false;
             }, this.timeoutTime * 1000);
 
-            const reason = `Tactically nuked by ${bomber}`;
-            const count = await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters);
-            client
-                .say(channel, `${count} out of ${chatters.length} chatters were nuked.`)
-                .catch((err) => logger.error(err));
+            const reason = snap ? `Thanos snap` : `Tactically nuked by ${bomber}`;
+            const count = await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters, snap);
+            const finalMsg = snap
+                ? `${count} out of ${chatters.length} chatters disappeared.`
+                : `${count} out of ${chatters.length} chatters were nuked.`;
+
+            client.say(channel, finalMsg).catch((err) => logger.error(err));
         } catch (err) {
             logger.error(err);
         }

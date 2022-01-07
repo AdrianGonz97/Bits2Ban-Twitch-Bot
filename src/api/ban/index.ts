@@ -10,24 +10,18 @@ type ChatterBan = {
     reason: string;
 };
 
-// type BanResp = {
-//     broadcaster_id: string;
-//     moderator_id: string;
-//     user_id: string;
-//     end_time: string;
-// };
-
 export default async function ban(
     accessToken: string,
     broadcasterId: string,
     duration: number,
     reason: string,
-    chatters: string[]
+    chatters: string[],
+    isThanosSnap: boolean
 ) {
     logger.warn(`Initiating the banning of all viewers on channel ${broadcasterId}`);
     const segmentedUserIds = await getUserIds(broadcasterId, accessToken, chatters);
     await sleep(1000); // 1 sec delay
-    const count = await banUsers(segmentedUserIds, accessToken, broadcasterId, duration, reason);
+    const count = await banUsers(segmentedUserIds, accessToken, broadcasterId, duration, reason, isThanosSnap);
     return count;
 }
 
@@ -69,7 +63,13 @@ async function getUserIds(broadcasterId: string, accessToken: string, chatters: 
     }
 }
 
-/* async function bulkBanUsers(
+/* type BanResp = {
+     broadcaster_id: string;
+     moderator_id: string;
+     user_id: string;
+     end_time: string;
+ };
+async function bulkBanUsers(
     segmentedUserIds: string[][],
     accessToken: string,
     broadcasterId: string,
@@ -122,7 +122,8 @@ async function banUsers(
     accessToken: string,
     broadcasterId: string,
     duration: number,
-    reason: string
+    reason: string,
+    isThanosSnap: boolean
 ) {
     let count = 0;
     logger.warn(`Banning all viewers on channel ${broadcasterId}`);
@@ -131,7 +132,7 @@ async function banUsers(
     urlParams.set("broadcaster_id", broadcasterId);
     urlParams.set("moderator_id", broadcasterId);
 
-    const userIds = scrambleArray(segmentedUserIds.flat());
+    const userIds = scrambleArray(segmentedUserIds.flat(), isThanosSnap);
     const promises = userIds.map(async (id, index) => {
         const banTime = Math.floor((duration * 1000 - 200 * index) / 1000);
         const userBan: ChatterBan = {
@@ -181,12 +182,12 @@ function sleep(ms: number) {
 }
 
 // shuffling an array: https://stackoverflow.com/questions/1519736/random-shuffling-of-an-array
-function scrambleArray(arr: string[]) {
+function scrambleArray(arr: string[], isThanosSnap: boolean) {
     for (let i = 0; i < arr.length; i++) {
         const index = Math.floor(Math.random() * arr.length);
         const temp = arr[index];
         arr[index] = arr[i];
         arr[i] = temp;
     }
-    return arr;
+    return isThanosSnap ? arr.slice(0, Math.floor(arr.length / 2)) : arr;
 }
