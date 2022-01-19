@@ -16,8 +16,6 @@ import refresh from "$src/api/oauth/refresh/index";
 // TODO: Scoreboard
 // TODO: EMOTE ONLY JAIL
 // TODO: Whitelist users cmd !!
-// TODO: on disconnect, refresh auth token and reconnect to irc
-// TODO: Pre perma ban users from another channel for hate raids?
 
 type BanRequest = {
     userToBan: string;
