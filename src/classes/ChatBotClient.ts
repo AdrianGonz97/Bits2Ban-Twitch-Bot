@@ -15,6 +15,9 @@ import refresh from "$src/api/oauth/refresh/index";
 // TODO: Add version number
 // TODO: Scoreboard
 // TODO: EMOTE ONLY JAIL
+// TODO: Whitelist users cmd !!
+// TODO: on disconnect, refresh auth token and reconnect to irc
+// TODO: Pre perma ban users from another channel for hate raids?
 
 type BanRequest = {
     userToBan: string;
@@ -35,7 +38,7 @@ type AntiSpamTimeouts = {
     tokens: boolean;
 };
 
-const timer = 45 * 1000; // 45 sec timer to prevent cmd spam
+const timer = 45 * 1000; // 45 sec timer to prevent cmd spam - make env var
 export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
 
@@ -60,8 +63,6 @@ export default class ChatBotClient extends EventEmitter {
     private numOfGiftedSubs: number;
 
     private accessToken: string;
-
-    // private nukeTime: number;
 
     private isChatNuked = false;
 
@@ -535,7 +536,8 @@ export default class ChatBotClient extends EventEmitter {
                 const userToGiveToken = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
                 args.shift(); // shifts to get the num of tokens next
                 if (userToGiveToken) {
-                    const numOfTokens = args.shift();
+                    let numOfTokens = args.shift();
+                    if (numOfTokens === undefined) numOfTokens = 1;
                     if (!isNaN(numOfTokens) && parseInt(numOfTokens) <= 100 && parseInt(numOfTokens) >= 1) {
                         this.addBanToken(userToGiveToken, parseInt(numOfTokens));
                         this.client
@@ -572,6 +574,13 @@ export default class ChatBotClient extends EventEmitter {
             }
             case "nuke": {
                 if (!username) return;
+                if (this.isChatNuked) {
+                    // only drop another nuke if there's no ongoing nuke
+                    this.client
+                        .say(channel, `Was 1 nuke not enough...? Not dropping another until the last one is over!`)
+                        .catch((err) => logger.error(err));
+                    break;
+                }
                 const chan = args.shift();
                 if (chan) this.nukeChat(this.client, channel, username, chan);
                 else this.nukeChat(this.client, channel, username, this.owner);
@@ -787,20 +796,24 @@ export default class ChatBotClient extends EventEmitter {
 
             const chatters = await getChatters(broadcaster ?? this.owner);
 
+            // nuke time is calculated by adding 200ms for every 1 user in chat
+            let nukeTime = snap ? Math.floor(((chatters.length / 2) * 2) / 10) : Math.floor((chatters.length * 2) / 10);
+            nukeTime += this.timeoutTime; // + set timeout time
+
             const nukeMsg = snap
                 ? `I am inevitable... Wiping out ${Math.floor(chatters.length / 2)} viewers out of exisitence in...`
-                : `Tactical nuke inbound. Banning ${chatters.length} viewers for ${this.timeoutTime} seconds. Dropping in...`;
+                : `Tactical nuke inbound. Banning ${chatters.length} viewers for ${nukeTime} seconds. Dropping in...`;
             client.say(channel, nukeMsg).catch((err) => logger.error(err));
             await ChatBotClient.nukeCountDown(client, channel);
 
-            this.nukeEndTime = Date.now() + this.timeoutTime * 1000;
+            this.nukeEndTime = Date.now() + nukeTime * 1000;
             this.isChatNuked = !snap;
             setTimeout(() => {
                 this.isChatNuked = false;
-            }, this.timeoutTime * 1000);
+            }, nukeTime * 1000);
 
             const reason = snap ? `Thanos snap` : `Tactically nuked by ${bomber}`;
-            const count = await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters, snap);
+            const count = await nukeChat(this.accessToken, this.ownerId, nukeTime, reason, chatters, snap);
             const finalMsg = snap
                 ? `${count} out of ${chatters.length} chatters disappeared.`
                 : `${count} out of ${chatters.length} chatters were nuked.`;
@@ -834,6 +847,7 @@ export default class ChatBotClient extends EventEmitter {
             if (!user) return;
 
             this.accessToken = user.access_token;
+            this.banQueue = [];
 
             this.client = new tmi.Client({
                 options: { debug: true },
