@@ -254,6 +254,10 @@ export default class ChatBotClient extends EventEmitter {
             ChatBotClient.clients.delete(this.owner);
             logger.warn(`Number of clients connected: ${ChatBotClient.clients.size}`);
         });
+
+        this.client.on("reconnect", () => {
+            this.reloadBot().catch((err) => logger.error(err));
+        });
     }
 
     private async timeoutUser(channel: string, userToBan: string, banRequester: string, isUno = false, count = 0) {
@@ -839,6 +843,7 @@ export default class ChatBotClient extends EventEmitter {
     }
 
     private async reloadBot() {
+        logger.warn(`Reloading chatbot for ${this.owner}'s channel`);
         try {
             await this.client.disconnect();
 
