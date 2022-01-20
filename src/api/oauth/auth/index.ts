@@ -55,7 +55,7 @@ export default async function post(req: Request, res: Response) {
                     ...token,
                     message: "was banned by",
                     bitTarget: "2000",
-                    timeoutTime: 609,
+                    timeoutTime: 600,
                     tokenExpireTime: 60 * 60 * 12,
                     numOfGiftedSubs: 5,
                 };
