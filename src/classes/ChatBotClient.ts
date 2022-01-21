@@ -15,6 +15,7 @@ import refresh from "$src/api/oauth/refresh/index";
 // TODO: Add version number
 // TODO: Scoreboard
 // TODO: EMOTE ONLY JAIL
+// TODO: Whitelist users cmd !!
 
 type BanRequest = {
     userToBan: string;
@@ -35,7 +36,7 @@ type AntiSpamTimeouts = {
     tokens: boolean;
 };
 
-const timer = 45 * 1000; // 45 sec timer to prevent cmd spam
+const timer = 45 * 1000; // 45 sec timer to prevent cmd spam - make env var
 export default class ChatBotClient extends EventEmitter {
     static clients = new Map<string, ChatBotClient>();
 
@@ -60,8 +61,6 @@ export default class ChatBotClient extends EventEmitter {
     private numOfGiftedSubs: number;
 
     private accessToken: string;
-
-    // private nukeTime: number;
 
     private isChatNuked = false;
 
@@ -252,6 +251,10 @@ export default class ChatBotClient extends EventEmitter {
             logger.warn(`Disconnected from ${this.owner}'s channel: ${reason}`);
             ChatBotClient.clients.delete(this.owner);
             logger.warn(`Number of clients connected: ${ChatBotClient.clients.size}`);
+        });
+
+        this.client.on("reconnect", () => {
+            this.reloadBot().catch((err) => logger.error(err));
         });
     }
 
@@ -535,7 +538,8 @@ export default class ChatBotClient extends EventEmitter {
                 const userToGiveToken = ChatBotClient.getTaggedUser(args.join(" ")).slice(1); // slice removes the @
                 args.shift(); // shifts to get the num of tokens next
                 if (userToGiveToken) {
-                    const numOfTokens = args.shift();
+                    let numOfTokens = args.shift();
+                    if (numOfTokens === undefined) numOfTokens = 1;
                     if (!isNaN(numOfTokens) && parseInt(numOfTokens) <= 100 && parseInt(numOfTokens) >= 1) {
                         this.addBanToken(userToGiveToken, parseInt(numOfTokens));
                         this.client
@@ -572,10 +576,46 @@ export default class ChatBotClient extends EventEmitter {
             }
             case "nuke": {
                 if (!username) return;
-                const chan = args.shift();
-                if (chan) this.nukeChat(this.client, channel, username, chan);
-                else this.nukeChat(this.client, channel, username, this.owner);
+                if (this.isChatNuked) {
+                    // only drop another nuke if there's no ongoing nuke
+                    this.client
+                        .say(channel, `Was 1 nuke not enough...? Not dropping another until the last one is over!`)
+                        .catch((err) => logger.error(err));
+                    break;
+                }
 
+                const nukeTime = args.shift();
+                if (!isNaN(nukeTime) && parseInt(nukeTime) <= 900000 && parseInt(nukeTime) >= 1) {
+                    const chan = args.shift();
+                    const time = parseInt(nukeTime);
+                    if (chan) this.nukeChat(this.client, channel, username, time, chan);
+                    else this.nukeChat(this.client, channel, username, time, this.owner);
+                } else {
+                    this.client
+                        .say(
+                            channel,
+                            `Invalid timeout time. Time must be within the range of [1 - 900000] seconds. For example: !b2b nuke 100`
+                        )
+                        .catch((err) => logger.error(err));
+                }
+                break;
+            }
+            case "snap": {
+                if (!username) return;
+                const nukeTime = args.shift();
+                if (!isNaN(nukeTime) && parseInt(nukeTime) <= 900000 && parseInt(nukeTime) >= 1) {
+                    const chan = args.shift();
+                    const time = parseInt(nukeTime);
+                    if (chan) this.nukeChat(this.client, channel, username, time, chan, true);
+                    else this.nukeChat(this.client, channel, username, time, this.owner, true);
+                } else {
+                    this.client
+                        .say(
+                            channel,
+                            `Invalid timeout time. Time must be within the range of [1 - 900000] seconds. For example: !b2b snap 100`
+                        )
+                        .catch((err) => logger.error(err));
+                }
                 break;
             }
             case "reload": {
@@ -769,7 +809,14 @@ export default class ChatBotClient extends EventEmitter {
         });
     }
 
-    private async nukeChat(client: Client, channel: string, bomber: string, broadcaster?: string) {
+    private async nukeChat(
+        client: Client,
+        channel: string,
+        bomber: string,
+        nukeTime: number,
+        broadcaster?: string,
+        snap = false
+    ) {
         if (this.timeoutTime === 0) return;
         try {
             // refreshes access token
@@ -778,32 +825,39 @@ export default class ChatBotClient extends EventEmitter {
             this.accessToken = user.access_token;
 
             const chatters = await getChatters(broadcaster ?? this.owner);
-            client
-                .say(
-                    channel,
-                    `Tactical nuke inbound. Banning ${chatters.length} viewers for ${this.timeoutTime} seconds. Dropping in...`
-                )
-                .catch((err) => logger.error(err));
+
+            // nuke time is calculated by adding 200ms for every 1 user in chat
+            let calcNukeTime = snap
+                ? Math.floor(((chatters.length / 2) * 2) / 10)
+                : Math.floor((chatters.length * 2) / 10);
+            calcNukeTime += nukeTime; // + set timeout time
+
+            const nukeMsg = snap
+                ? `I am inevitable... Wiping out ${Math.floor(chatters.length / 2)} viewers out of exisitence in...`
+                : `Tactical nuke inbound. Banning ${chatters.length} viewers for ${calcNukeTime} seconds. Dropping in...`;
+            client.say(channel, nukeMsg).catch((err) => logger.error(err));
             await ChatBotClient.nukeCountDown(client, channel);
 
-            this.nukeEndTime = Date.now() + this.timeoutTime * 1000;
-            this.isChatNuked = true;
+            this.nukeEndTime = Date.now() + calcNukeTime * 1000;
+            this.isChatNuked = !snap;
             setTimeout(() => {
                 this.isChatNuked = false;
-            }, this.timeoutTime * 1000);
+            }, calcNukeTime * 1000);
 
-            const reason = `Tactically nuked by ${bomber}`;
-            const count = await nukeChat(this.accessToken, this.ownerId, this.timeoutTime, reason, chatters);
-            client
-                .say(channel, `${count} out of ${chatters.length} chatters were nuked.`)
-                .catch((err) => logger.error(err));
+            const reason = snap ? `Thanos snap` : `Tactically nuked by ${bomber}`;
+            const count = await nukeChat(this.accessToken, this.ownerId, calcNukeTime, reason, chatters, snap);
+            const finalMsg = snap
+                ? `${count} out of ${chatters.length} chatters disappeared.`
+                : `${count} out of ${chatters.length} chatters were nuked.`;
+
+            client.say(channel, finalMsg).catch((err) => logger.error(err));
         } catch (err) {
             logger.error(err);
         }
     }
 
     static nukeCountDown(client: Client, channel: string) {
-        let count = 5;
+        let count = 10;
         return new Promise((resolve) => {
             const interval = setInterval(() => {
                 if (count === 1) {
@@ -817,6 +871,7 @@ export default class ChatBotClient extends EventEmitter {
     }
 
     private async reloadBot() {
+        logger.warn(`Reloading chatbot for ${this.owner}'s channel`);
         try {
             await this.client.disconnect();
 
@@ -825,6 +880,7 @@ export default class ChatBotClient extends EventEmitter {
             if (!user) return;
 
             this.accessToken = user.access_token;
+            this.banQueue = [];
 
             this.client = new tmi.Client({
                 options: { debug: true },
