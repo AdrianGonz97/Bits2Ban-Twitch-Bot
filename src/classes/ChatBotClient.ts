@@ -583,18 +583,39 @@ export default class ChatBotClient extends EventEmitter {
                         .catch((err) => logger.error(err));
                     break;
                 }
-                const chan = args.shift();
-                if (chan) this.nukeChat(this.client, channel, username, chan);
-                else this.nukeChat(this.client, channel, username, this.owner);
 
+                const nukeTime = args.shift();
+                if (!isNaN(nukeTime) && parseInt(nukeTime) <= 900000 && parseInt(nukeTime) >= 1) {
+                    const chan = args.shift();
+                    const time = parseInt(nukeTime);
+                    if (chan) this.nukeChat(this.client, channel, username, time, chan);
+                    else this.nukeChat(this.client, channel, username, time, this.owner);
+                } else {
+                    this.client
+                        .say(
+                            channel,
+                            `Invalid timeout time. Time must be within the range of [1 - 900000] seconds. For example: !b2b nuke 100`
+                        )
+                        .catch((err) => logger.error(err));
+                }
                 break;
             }
             case "snap": {
                 if (!username) return;
-                const chan = args.shift();
-                if (chan) this.nukeChat(this.client, channel, username, chan, true);
-                else this.nukeChat(this.client, channel, username, this.owner, true);
-
+                const nukeTime = args.shift();
+                if (!isNaN(nukeTime) && parseInt(nukeTime) <= 900000 && parseInt(nukeTime) >= 1) {
+                    const chan = args.shift();
+                    const time = parseInt(nukeTime);
+                    if (chan) this.nukeChat(this.client, channel, username, time, chan, true);
+                    else this.nukeChat(this.client, channel, username, time, this.owner, true);
+                } else {
+                    this.client
+                        .say(
+                            channel,
+                            `Invalid timeout time. Time must be within the range of [1 - 900000] seconds. For example: !b2b snap 100`
+                        )
+                        .catch((err) => logger.error(err));
+                }
                 break;
             }
             case "reload": {
@@ -788,7 +809,14 @@ export default class ChatBotClient extends EventEmitter {
         });
     }
 
-    private async nukeChat(client: Client, channel: string, bomber: string, broadcaster?: string, snap = false) {
+    private async nukeChat(
+        client: Client,
+        channel: string,
+        bomber: string,
+        nukeTime: number,
+        broadcaster?: string,
+        snap = false
+    ) {
         if (this.timeoutTime === 0) return;
         try {
             // refreshes access token
@@ -799,23 +827,25 @@ export default class ChatBotClient extends EventEmitter {
             const chatters = await getChatters(broadcaster ?? this.owner);
 
             // nuke time is calculated by adding 200ms for every 1 user in chat
-            let nukeTime = snap ? Math.floor(((chatters.length / 2) * 2) / 10) : Math.floor((chatters.length * 2) / 10);
-            nukeTime += this.timeoutTime; // + set timeout time
+            let calcNukeTime = snap
+                ? Math.floor(((chatters.length / 2) * 2) / 10)
+                : Math.floor((chatters.length * 2) / 10);
+            calcNukeTime += nukeTime; // + set timeout time
 
             const nukeMsg = snap
                 ? `I am inevitable... Wiping out ${Math.floor(chatters.length / 2)} viewers out of exisitence in...`
-                : `Tactical nuke inbound. Banning ${chatters.length} viewers for ${nukeTime} seconds. Dropping in...`;
+                : `Tactical nuke inbound. Banning ${chatters.length} viewers for ${calcNukeTime} seconds. Dropping in...`;
             client.say(channel, nukeMsg).catch((err) => logger.error(err));
             await ChatBotClient.nukeCountDown(client, channel);
 
-            this.nukeEndTime = Date.now() + nukeTime * 1000;
+            this.nukeEndTime = Date.now() + calcNukeTime * 1000;
             this.isChatNuked = !snap;
             setTimeout(() => {
                 this.isChatNuked = false;
-            }, nukeTime * 1000);
+            }, calcNukeTime * 1000);
 
             const reason = snap ? `Thanos snap` : `Tactically nuked by ${bomber}`;
-            const count = await nukeChat(this.accessToken, this.ownerId, nukeTime, reason, chatters, snap);
+            const count = await nukeChat(this.accessToken, this.ownerId, calcNukeTime, reason, chatters, snap);
             const finalMsg = snap
                 ? `${count} out of ${chatters.length} chatters disappeared.`
                 : `${count} out of ${chatters.length} chatters were nuked.`;
@@ -827,7 +857,7 @@ export default class ChatBotClient extends EventEmitter {
     }
 
     static nukeCountDown(client: Client, channel: string) {
-        let count = 5;
+        let count = 10;
         return new Promise((resolve) => {
             const interval = setInterval(() => {
                 if (count === 1) {
