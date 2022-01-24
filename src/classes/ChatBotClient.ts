@@ -824,7 +824,11 @@ export default class ChatBotClient extends EventEmitter {
             if (!user) return;
             this.accessToken = user.access_token;
 
-            const chatters = await getChatters(broadcaster ?? this.owner);
+            const chanChatters = await getChatters(broadcaster ?? this.owner);
+
+            // filters out mods from the list of chatters
+            const modList = await this.client.mods(channel);
+            const chatters = chanChatters.filter((name) => !modList.includes(name));
 
             // nuke time is calculated by adding 200ms for every 1 user in chat
             let calcNukeTime = snap
