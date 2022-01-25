@@ -24,6 +24,7 @@ module.exports = {
         "import/no-unresolved": "error",
         "no-console": "off",
         "no-plusplus": "off",
+        "no-non-null-assertion": off,
         "import/order": [
             "error",
             {

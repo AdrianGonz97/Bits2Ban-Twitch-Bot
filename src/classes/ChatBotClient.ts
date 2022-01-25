@@ -66,6 +66,8 @@ export default class ChatBotClient extends EventEmitter {
 
     private nukeEndTime = 0;
 
+    private refreshTokenTimeout: NodeJS.Timeout | null = null;
+
     timeoutTime; // seconds
 
     bitTarget; // bits
@@ -113,11 +115,20 @@ export default class ChatBotClient extends EventEmitter {
     }
 
     start() {
-        this.client.connect().catch((err) => logger.error(err));
+        this.client
+            .connect()
+            .then(() => {
+                const reloadTime = 1000 * 60 * 60 * 4; // 4 hours in ms
+                this.refreshTokenTimeout = setTimeout(() => {
+                    this.reloadBot();
+                }, reloadTime);
+            })
+            .catch((err) => logger.error(err));
     }
 
     stop() {
         this.client.disconnect().catch((err) => logger.error(err));
+        clearTimeout(this.refreshTokenTimeout!);
     }
 
     private setEvents() {
@@ -244,7 +255,7 @@ export default class ChatBotClient extends EventEmitter {
             logger.info(`Connected to ${this.owner}'s channel`);
             ChatBotClient.clients.set(this.owner, this);
             logger.warn(`Number of clients connected: ${ChatBotClient.clients.size}`);
-            this.client.say(`#${this.owner}`, `B2B Chatbot connected.`).catch((err) => logger.error(err));
+            // this.client.say(`#${this.owner}`, `B2B chatbot connected.`).catch((err) => logger.error(err));
         });
 
         this.client.on("disconnected", (reason: string) => {
@@ -621,6 +632,7 @@ export default class ChatBotClient extends EventEmitter {
             case "reload": {
                 this.client.say(channel, `Reloading B2B Chatbot...`).catch((err) => logger.error(err));
                 this.reloadBot();
+                this.banQueue = [];
                 break;
             }
             case "settings": {
@@ -877,14 +889,13 @@ export default class ChatBotClient extends EventEmitter {
     private async reloadBot() {
         logger.warn(`Reloading chatbot for ${this.owner}'s channel`);
         try {
-            await this.client.disconnect();
+            this.stop();
 
             // get new access token
             const user = await refresh(this.user);
             if (!user) return;
 
             this.accessToken = user.access_token;
-            this.banQueue = [];
 
             this.client = new tmi.Client({
                 options: { debug: true },
