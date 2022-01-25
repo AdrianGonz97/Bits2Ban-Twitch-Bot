@@ -66,7 +66,7 @@ export default class ChatBotClient extends EventEmitter {
 
     private nukeEndTime = 0;
 
-    private refreshTokenTimeout: NodeJS.Timeout | null = null;
+    private refreshTokenInterval: NodeJS.Timer | null = null;
 
     timeoutTime; // seconds
 
@@ -82,6 +82,13 @@ export default class ChatBotClient extends EventEmitter {
         this.user = user;
         this.owner = user.login;
         this.ownerId = user.userId;
+        this.accessToken = user.access_token;
+        this.antiSpam = { code: false, how: false, war: false, tokens: false };
+        this.timeoutTime = user.timeoutTime;
+        this.bitTarget = user.bitTarget;
+        this.message = user.message;
+        this.banTokenExpireTime = user.tokenExpireTime;
+        this.numOfGiftedSubs = user.numOfGiftedSubs;
         this.client = new tmi.Client({
             options: { debug: true },
             connection: {
@@ -95,13 +102,6 @@ export default class ChatBotClient extends EventEmitter {
             channels: [user.login],
             logger,
         });
-        this.accessToken = user.access_token;
-        this.antiSpam = { code: false, how: false, war: false, tokens: false };
-        this.timeoutTime = user.timeoutTime;
-        this.bitTarget = user.bitTarget;
-        this.message = user.message;
-        this.banTokenExpireTime = user.tokenExpireTime;
-        this.numOfGiftedSubs = user.numOfGiftedSubs;
 
         this.db = new Datastore({
             filename: `./data/ban-tokens/${this.owner}.db`,
@@ -119,7 +119,8 @@ export default class ChatBotClient extends EventEmitter {
             .connect()
             .then(() => {
                 const reloadTime = 1000 * 60 * 60 * 4; // 4 hours in ms
-                this.refreshTokenTimeout = setTimeout(() => {
+                this.refreshTokenInterval = setInterval(() => {
+                    logger.warn(`Intervally reloading chatbot for ${this.owner}'s channel`);
                     this.reloadBot();
                 }, reloadTime);
             })
@@ -128,7 +129,7 @@ export default class ChatBotClient extends EventEmitter {
 
     stop() {
         this.client.disconnect().catch((err) => logger.error(err));
-        clearTimeout(this.refreshTokenTimeout!);
+        clearInterval(this.refreshTokenInterval!);
     }
 
     private setEvents() {
@@ -889,7 +890,9 @@ export default class ChatBotClient extends EventEmitter {
     private async reloadBot() {
         logger.warn(`Reloading chatbot for ${this.owner}'s channel`);
         try {
-            this.stop();
+            // disconnecting here rather than calling stop() so we don't result
+            // in duplicate clients running at the same time
+            await this.client.disconnect();
 
             // get new access token
             const user = await refresh(this.user);
@@ -913,9 +916,10 @@ export default class ChatBotClient extends EventEmitter {
 
             this.setEvents();
 
-            this.start();
+            await this.client.connect();
         } catch (err) {
             logger.error(err);
+            logger.error(`Failed to reload chatbot for ${this.owner}'s channel`);
         }
     }
 }
