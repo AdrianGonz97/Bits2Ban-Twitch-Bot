@@ -288,39 +288,36 @@ export default class ChatBotClient extends EventEmitter {
                     `@${userToBan} do you have any final words? If you have a ban token, you can type "!uno" to send the ban right back to @${banRequester}, or you can cheer ${this.bitTarget} bits.`
                 );
 
-            const timeout = setTimeout(
-                async () => {
-                    try {
-                        await this.client.timeout(
-                            channel,
-                            userToBan,
-                            time,
-                            `Timed out for bits - requested by ${banRequester}`
-                        );
-                        logger.warn(`[TIMEOUT] [${channel}]: <${userToBan}>`);
-
-                        // if a mod was banned..
-                        if (isBannedAlreadyMod) {
-                            this.bannedMods = this.bannedMods.filter((mod) => mod.username !== userToBan);
-                            this.remodAfterBan(channel, userToBan, time);
-                        } else if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
-
-                        await this.client.say(
-                            channel,
-                            `@${userToBan} ${this.message} @${banRequester} for ${time} seconds`
-                        );
-                    } catch (err) {
-                        logger.error(err);
-                        // failed to ban? reload access token
-                        this.reloadBot();
-                    }
-                    // remove the ban from the queue after timeout
-                    this.banQueue = this.banQueue.filter(
-                        (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
+            const timeout = setTimeout(async () => {
+                try {
+                    await this.client.timeout(
+                        channel,
+                        userToBan,
+                        time,
+                        `Timed out for bits - requested by ${banRequester}`
                     );
-                },
-                isUno ? 60000 : 25000
-            );
+                    logger.warn(`[TIMEOUT] [${channel}]: <${userToBan}>`);
+
+                    // if a mod was banned..
+                    if (isBannedAlreadyMod) {
+                        this.bannedMods = this.bannedMods.filter((mod) => mod.username !== userToBan);
+                        this.remodAfterBan(channel, userToBan, time);
+                    } else if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
+
+                    await this.client.say(
+                        channel,
+                        `@${userToBan} ${this.message} @${banRequester} for ${time} seconds`
+                    );
+                } catch (err) {
+                    logger.error(err);
+                    // failed to ban? reload access token
+                    this.reloadBot();
+                }
+                // remove the ban from the queue after timeout
+                this.banQueue = this.banQueue.filter(
+                    (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
+                );
+            }, (isUno ? 60000 : 25000) + Math.floor(Math.random() * 4000));
 
             const newBanRequest: BanRequest = {
                 userToBan,
