@@ -317,6 +317,7 @@ export default class ChatBotClient extends EventEmitter {
                 this.banQueue = this.banQueue.filter(
                     (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
                 );
+                // adds random variance (0-4000ms) to prevent dodging
             }, (isUno ? 60000 : 25000) + Math.floor(Math.random() * 4000));
 
             const newBanRequest: BanRequest = {
