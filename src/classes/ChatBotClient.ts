@@ -14,8 +14,7 @@ import refresh from "$src/api/oauth/refresh/index";
 
 // TODO: Add version number
 // TODO: Scoreboard
-// TODO: EMOTE ONLY JAIL
-// TODO: Whitelist users cmd !!
+// TODO: Whitelist users cmd
 
 type BanRequest = {
     userToBan: string;
@@ -78,7 +77,7 @@ export default class ChatBotClient extends EventEmitter {
 
     constructor(user: User) {
         super();
-        this.whitelist = ["moobot", "nightbot", "cokakoala", user.login];
+        this.whitelist = ["moobot", "nightbot", "cokakoala", "beardbox", user.login];
         this.user = user;
         this.owner = user.login;
         this.ownerId = user.userId;
@@ -353,7 +352,7 @@ export default class ChatBotClient extends EventEmitter {
                 } catch (err) {
                     logger.error(err);
                 }
-            }, 10000);
+            }, 10000 + Math.floor(Math.random() * 4000));
         } catch (err) {
             logger.error(err);
         }
