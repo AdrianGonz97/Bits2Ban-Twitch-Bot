@@ -14,8 +14,7 @@ import refresh from "$src/api/oauth/refresh/index";
 
 // TODO: Add version number
 // TODO: Scoreboard
-// TODO: EMOTE ONLY JAIL
-// TODO: Whitelist users cmd !!
+// TODO: Whitelist users cmd
 
 type BanRequest = {
     userToBan: string;
@@ -66,6 +65,8 @@ export default class ChatBotClient extends EventEmitter {
 
     private nukeEndTime = 0;
 
+    private refreshTokenInterval: NodeJS.Timer | null = null;
+
     timeoutTime; // seconds
 
     bitTarget; // bits
@@ -76,10 +77,17 @@ export default class ChatBotClient extends EventEmitter {
 
     constructor(user: User) {
         super();
-        this.whitelist = ["moobot", "nightbot", "cokakoala", user.login];
+        this.whitelist = ["moobot", "nightbot", "cokakoala", "beardbox", user.login];
         this.user = user;
         this.owner = user.login;
         this.ownerId = user.userId;
+        this.accessToken = user.access_token;
+        this.antiSpam = { code: false, how: false, war: false, tokens: false };
+        this.timeoutTime = user.timeoutTime;
+        this.bitTarget = user.bitTarget;
+        this.message = user.message;
+        this.banTokenExpireTime = user.tokenExpireTime;
+        this.numOfGiftedSubs = user.numOfGiftedSubs;
         this.client = new tmi.Client({
             options: { debug: true },
             connection: {
@@ -93,13 +101,6 @@ export default class ChatBotClient extends EventEmitter {
             channels: [user.login],
             logger,
         });
-        this.accessToken = user.access_token;
-        this.antiSpam = { code: false, how: false, war: false, tokens: false };
-        this.timeoutTime = user.timeoutTime;
-        this.bitTarget = user.bitTarget;
-        this.message = user.message;
-        this.banTokenExpireTime = user.tokenExpireTime;
-        this.numOfGiftedSubs = user.numOfGiftedSubs;
 
         this.db = new Datastore({
             filename: `./data/ban-tokens/${this.owner}.db`,
@@ -113,11 +114,21 @@ export default class ChatBotClient extends EventEmitter {
     }
 
     start() {
-        this.client.connect().catch((err) => logger.error(err));
+        this.client
+            .connect()
+            .then(() => {
+                const reloadTime = 1000 * 60 * 60 * 4; // 4 hours in ms
+                this.refreshTokenInterval = setInterval(() => {
+                    logger.warn(`Intervally reloading chatbot for ${this.owner}'s channel`);
+                    this.reloadBot();
+                }, reloadTime);
+            })
+            .catch((err) => logger.error(err));
     }
 
     stop() {
         this.client.disconnect().catch((err) => logger.error(err));
+        clearInterval(this.refreshTokenInterval!);
     }
 
     private setEvents() {
@@ -244,7 +255,7 @@ export default class ChatBotClient extends EventEmitter {
             logger.info(`Connected to ${this.owner}'s channel`);
             ChatBotClient.clients.set(this.owner, this);
             logger.warn(`Number of clients connected: ${ChatBotClient.clients.size}`);
-            this.client.say(`#${this.owner}`, `B2B Chatbot connected.`).catch((err) => logger.error(err));
+            // this.client.say(`#${this.owner}`, `B2B chatbot connected.`).catch((err) => logger.error(err));
         });
 
         this.client.on("disconnected", (reason: string) => {
@@ -276,39 +287,37 @@ export default class ChatBotClient extends EventEmitter {
                     `@${userToBan} do you have any final words? If you have a ban token, you can type "!uno" to send the ban right back to @${banRequester}, or you can cheer ${this.bitTarget} bits.`
                 );
 
-            const timeout = setTimeout(
-                async () => {
-                    try {
-                        await this.client.timeout(
-                            channel,
-                            userToBan,
-                            time,
-                            `Timed out for bits - requested by ${banRequester}`
-                        );
-                        logger.warn(`[TIMEOUT] [${channel}]: <${userToBan}>`);
-
-                        // if a mod was banned..
-                        if (isBannedAlreadyMod) {
-                            this.bannedMods = this.bannedMods.filter((mod) => mod.username !== userToBan);
-                            this.remodAfterBan(channel, userToBan, time);
-                        } else if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
-
-                        await this.client.say(
-                            channel,
-                            `@${userToBan} ${this.message} @${banRequester} for ${time} seconds`
-                        );
-                    } catch (err) {
-                        logger.error(err);
-                        // failed to ban? reload access token
-                        this.reloadBot();
-                    }
-                    // remove the ban from the queue after timeout
-                    this.banQueue = this.banQueue.filter(
-                        (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
+            const timeout = setTimeout(async () => {
+                try {
+                    await this.client.timeout(
+                        channel,
+                        userToBan,
+                        time,
+                        `Timed out for bits - requested by ${banRequester}`
                     );
-                },
-                isUno ? 60000 : 25000
-            );
+                    logger.warn(`[TIMEOUT] [${channel}]: <${userToBan}>`);
+
+                    // if a mod was banned..
+                    if (isBannedAlreadyMod) {
+                        this.bannedMods = this.bannedMods.filter((mod) => mod.username !== userToBan);
+                        this.remodAfterBan(channel, userToBan, time);
+                    } else if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, time);
+
+                    await this.client.say(
+                        channel,
+                        `@${userToBan} ${this.message} @${banRequester} for ${time} seconds`
+                    );
+                } catch (err) {
+                    logger.error(err);
+                    // failed to ban? reload access token
+                    this.reloadBot();
+                }
+                // remove the ban from the queue after timeout
+                this.banQueue = this.banQueue.filter(
+                    (ban) => ban.banRequester !== banRequester || ban.userToBan !== userToBan
+                );
+                // adds random variance (0-4000ms) to prevent dodging
+            }, (isUno ? 60000 : 25000) + Math.floor(Math.random() * 4000));
 
             const newBanRequest: BanRequest = {
                 userToBan,
@@ -327,7 +336,7 @@ export default class ChatBotClient extends EventEmitter {
         try {
             // get list of mods for channel
             const mods = await this.client.mods(channel);
-            await this.client.say(channel, `@${userToBan} ...really? WeirdChamp`);
+            await this.client.say(channel, `@${userToBan} ...really?`);
             setTimeout(async () => {
                 try {
                     await this.client.timeout(
@@ -336,14 +345,14 @@ export default class ChatBotClient extends EventEmitter {
                         this.timeoutTime,
                         `Timed out for bits - uno reverse card`
                     );
-                    await this.client.say(channel, `PogOFF @${userToBan}`);
+                    await this.client.say(channel, `@${userToBan} Jebaited`);
                     logger.warn(`[TIMEOUT] [${channel}]: <${userToBan}>`);
 
                     if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, this.timeoutTime);
                 } catch (err) {
                     logger.error(err);
                 }
-            }, 10000);
+            }, 10000 + Math.floor(Math.random() * 4000));
         } catch (err) {
             logger.error(err);
         }
@@ -621,6 +630,7 @@ export default class ChatBotClient extends EventEmitter {
             case "reload": {
                 this.client.say(channel, `Reloading B2B Chatbot...`).catch((err) => logger.error(err));
                 this.reloadBot();
+                this.banQueue = [];
                 break;
             }
             case "settings": {
@@ -824,7 +834,11 @@ export default class ChatBotClient extends EventEmitter {
             if (!user) return;
             this.accessToken = user.access_token;
 
-            const chatters = await getChatters(broadcaster ?? this.owner);
+            const chanChatters = await getChatters(broadcaster ?? this.owner);
+
+            // filters out mods from the list of chatters
+            const modList = await this.client.mods(channel);
+            const chatters = chanChatters.filter((name) => !modList.includes(name));
 
             // nuke time is calculated by adding 200ms for every 1 user in chat
             let calcNukeTime = snap
@@ -873,6 +887,8 @@ export default class ChatBotClient extends EventEmitter {
     private async reloadBot() {
         logger.warn(`Reloading chatbot for ${this.owner}'s channel`);
         try {
+            // disconnecting here rather than calling stop() so we don't result
+            // in duplicate clients running at the same time
             await this.client.disconnect();
 
             // get new access token
@@ -880,7 +896,6 @@ export default class ChatBotClient extends EventEmitter {
             if (!user) return;
 
             this.accessToken = user.access_token;
-            this.banQueue = [];
 
             this.client = new tmi.Client({
                 options: { debug: true },
@@ -898,9 +913,10 @@ export default class ChatBotClient extends EventEmitter {
 
             this.setEvents();
 
-            this.start();
+            await this.client.connect();
         } catch (err) {
             logger.error(err);
+            logger.error(`Failed to reload chatbot for ${this.owner}'s channel`);
         }
     }
 }
