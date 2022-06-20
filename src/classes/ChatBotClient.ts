@@ -336,7 +336,7 @@ export default class ChatBotClient extends EventEmitter {
         try {
             // get list of mods for channel
             const mods = await this.client.mods(channel);
-            await this.client.say(channel, `@${userToBan} ...really? WeirdChamp`);
+            await this.client.say(channel, `@${userToBan} ...really?`);
             setTimeout(async () => {
                 try {
                     await this.client.timeout(
@@ -345,7 +345,7 @@ export default class ChatBotClient extends EventEmitter {
                         this.timeoutTime,
                         `Timed out for bits - uno reverse card`
                     );
-                    await this.client.say(channel, `PogOFF @${userToBan}`);
+                    await this.client.say(channel, `@${userToBan} Jebaited`);
                     logger.warn(`[TIMEOUT] [${channel}]: <${userToBan}>`);
 
                     if (mods.includes(userToBan)) this.remodAfterBan(channel, userToBan, this.timeoutTime);
